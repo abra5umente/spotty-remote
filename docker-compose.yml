@@ -9,7 +9,13 @@ services:
       - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
       - SECRET_KEY=${SECRET_KEY}
       - REDIRECT_URI=${REDIRECT_URI}
+      - USE_HTTPS=${USE_HTTPS:-false}
+      - DOMAIN_NAME=${DOMAIN_NAME:-}
+      - CERT_PATH=${CERT_PATH:-./certs}
+      - PORT=${PORT:-5000}
     restart: unless-stopped
+    volumes:
+      - ./certs:/app/certs
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/"]
       interval: 30s
