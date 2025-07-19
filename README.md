@@ -50,8 +50,9 @@ A Python web application that allows you to control your desktop Spotify client 
 
 **Option B: Tailscale (Easy Setup)**
 - ✅ No domain required
-- ✅ Automatic HTTPS
+- ✅ Automatic HTTPS (handled by Tailscale)
 - ✅ Works across networks
+- ✅ No certificate generation needed
 - ❌ Requires Tailscale account
 
 **Note:** Spotify requires HTTPS for callback URIs in all cases, so HTTP-only mode is not supported.
@@ -218,6 +219,7 @@ To control Spotify from your laptop or other devices:
 2. Get your Tailscale endpoint URL
 3. Use that URL in your `.env` file
 4. Update your Spotify app's redirect URI
+5. The app will run HTTP internally (Tailscale handles HTTPS)
 
 **Benefits:**
 - No domain required
@@ -305,7 +307,7 @@ The app doesn't play any music itself - it only controls your existing Spotify d
 
 ### HTTPS/SSL issues
 - **Let's Encrypt**: Make sure port 80 is open and domain points to your server
-- **Tailscale**: Check that Tailscale is running and connected
+- **Tailscale**: Check that Tailscale is running and connected (no certificates needed)
 - **Self-signed certs**: Accept the security warning in your browser
 - Check certificate renewal: `./renew_cert.sh`
 

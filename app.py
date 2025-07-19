@@ -30,6 +30,9 @@ DOMAIN_NAME = os.getenv('DOMAIN_NAME', '')
 CERT_PATH = os.getenv('CERT_PATH', './certs')
 PORT = int(os.getenv('PORT', 5000))
 
+# Check if using Tailscale (has .ts.net domain)
+IS_TAILSCALE = '.ts.net' in DOMAIN_NAME if DOMAIN_NAME else False
+
 # Spotify OAuth scope - we need user-read-playback-state and user-modify-playback-state
 SCOPE = "user-read-playback-state user-modify-playback-state user-read-currently-playing"
 
@@ -275,14 +278,21 @@ def seek():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    # Spotify requires HTTPS for callback URIs
-    cert_file, key_file = generate_self_signed_cert()
-    ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-    ssl_context.load_cert_chain(cert_file, key_file)
-    
-    print(f"🔒 Starting HTTPS server on port {PORT}")
-    print(f"📱 Access your app at: https://localhost:{PORT}")
-    if DOMAIN_NAME:
-        print(f"🌐 Or at: https://{DOMAIN_NAME}:{PORT}")
-    
-    app.run(debug=True, host='0.0.0.0', port=PORT, ssl_context=ssl_context) 
+    if IS_TAILSCALE:
+        # Tailscale handles HTTPS automatically
+        print(f"🔒 Starting server on port {PORT} (Tailscale handles HTTPS)")
+        print(f"📱 Access your app at: https://{DOMAIN_NAME}:{PORT}")
+        
+        app.run(debug=True, host='0.0.0.0', port=PORT)
+    else:
+        # Generate self-signed certificate for non-Tailscale HTTPS
+        cert_file, key_file = generate_self_signed_cert()
+        ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        ssl_context.load_cert_chain(cert_file, key_file)
+        
+        print(f"🔒 Starting HTTPS server on port {PORT}")
+        print(f"📱 Access your app at: https://localhost:{PORT}")
+        if DOMAIN_NAME:
+            print(f"🌐 Or at: https://{DOMAIN_NAME}:{PORT}")
+        
+        app.run(debug=True, host='0.0.0.0', port=PORT, ssl_context=ssl_context) 
