@@ -4,8 +4,7 @@ from spotipy.oauth2 import SpotifyOAuth
 import os
 from dotenv import load_dotenv
 import json
-import ssl
-import ipaddress
+
 import subprocess
 import threading
 import time
@@ -23,19 +22,12 @@ SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
 SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
 REDIRECT_URI = os.getenv('REDIRECT_URI', 'https://localhost:5000/callback')
 
-# HTTPS configuration (required by Spotify)
-USE_HTTPS = os.getenv('USE_HTTPS', 'true').lower() == 'true'
+# Configuration
 DOMAIN_NAME = os.getenv('DOMAIN_NAME', '')
-CERT_PATH = os.getenv('CERT_PATH', './certs')
 PORT = int(os.getenv('PORT', 5000))
 
 # Check if using Tailscale (has .ts.net domain)
 IS_TAILSCALE = '.ts.net' in DOMAIN_NAME if DOMAIN_NAME else False
-
-# Check if using Let's Encrypt (has cert files)
-LETSENCRYPT_CERT = os.path.join(CERT_PATH, 'fullchain.pem')
-LETSENCRYPT_KEY = os.path.join(CERT_PATH, 'privkey.pem')
-IS_LETSENCRYPT = os.path.exists(LETSENCRYPT_CERT) and os.path.exists(LETSENCRYPT_KEY)
 
 # Spotify OAuth scope - we need user-read-playback-state and user-modify-playback-state
 SCOPE = "user-read-playback-state user-modify-playback-state user-read-currently-playing"
@@ -54,11 +46,10 @@ def create_spotify_oauth():
         cache_path=os.path.join(cache_dir, 'spotify_token_cache')
     )
 
-def get_tailscale_hostname():
-    """Get the current Tailscale hostname if Tailscale is running"""
+def get_container_tailscale_hostname():
+    """Get the current Tailscale hostname from the container's Tailscale installation"""
     try:
         # Check if Tailscale is running and get hostname
-        # On Windows, Tailscale runs as a service, so we use the CLI
         result = subprocess.run(['tailscale', 'status', '--json'], capture_output=True, text=True, check=True)
         import json
         data = json.loads(result.stdout)
@@ -76,21 +67,11 @@ def get_tailscale_hostname():
         
     except subprocess.CalledProcessError as e:
         print(f"❌ Error getting Tailscale status: {e}")
-        print("💡 Make sure Tailscale is running on your system")
+        print("💡 Make sure Tailscale is running in the container")
         return None
     except FileNotFoundError:
-        print("❌ Tailscale not installed. Please install it first.")
-        print("💡 Download from: https://tailscale.com/download")
+        print("❌ Tailscale not installed in container.")
         return None
-
-def check_letsencrypt_certs():
-    """Check if Let's Encrypt certificates are available"""
-    if os.path.exists(LETSENCRYPT_CERT) and os.path.exists(LETSENCRYPT_KEY):
-        print(f"✅ Found Let's Encrypt certificates")
-        return True
-    else:
-        print(f"⚠️ Let's Encrypt certificates not found at {CERT_PATH}")
-        return False
 
 @app.route('/')
 def index():
@@ -278,37 +259,22 @@ def seek():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    # Check if we're in a Docker container
-    is_docker = os.path.exists('/.dockerenv') or os.environ.get('DOCKER_CONTAINER') == 'true'
-    
     # Determine the correct setup based on configuration
     if IS_TAILSCALE:
         # Tailscale mode: HTTP server (Tailscale handles HTTPS)
         print("🔍 Detecting Tailscale hostname...")
-        tailscale_hostname = get_tailscale_hostname()
+        tailscale_hostname = get_container_tailscale_hostname()
         if tailscale_hostname:
             print(f"🔒 Tailscale mode: HTTP server")
             print(f"📱 Access your app at: https://{tailscale_hostname}:{PORT}")
             print(f"🔗 Spotify redirect URI: https://{tailscale_hostname}:{PORT}/callback")
         else:
             print("❌ Tailscale not running or hostname not found.")
-            print("💡 Please start Tailscale manually or use a different setup.")
+            print("💡 Please check Tailscale configuration in container.")
             exit(1)
         
         # Start HTTP server for Tailscale
         app.run(debug=True, host='0.0.0.0', port=PORT)
-        
-    elif IS_LETSENCRYPT:
-        # Let's Encrypt mode: HTTPS with Let's Encrypt certs
-        print("🔒 Let's Encrypt mode: HTTPS server")
-        print(f"📱 Access your app at: https://{DOMAIN_NAME}:{PORT}")
-        print(f"🔗 Spotify redirect URI: https://{DOMAIN_NAME}:{PORT}/callback")
-        
-        # Use Let's Encrypt certificates
-        ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        ssl_context.load_cert_chain(LETSENCRYPT_CERT, LETSENCRYPT_KEY)
-        
-        app.run(debug=True, host='0.0.0.0', port=PORT, ssl_context=ssl_context)
         
     else:
         # Local development mode: HTTP server
