@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Spotify Remote Control{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h1><i class="fab fa-spotify"></i> Spotify Remote Control</h1>
+    <p>Control your desktop Spotify from anywhere</p>
+</div>
+
+<div class="card">
+    <div style="text-align: center;">
+        <h2 style="margin-bottom: 20px;">Connect to Spotify</h2>
+        <p style="margin-bottom: 30px; opacity: 0.8;">
+            To control your Spotify playback, you need to authorize this app to access your Spotify account.
+        </p>
+        
+        <a href="{{ auth_url }}" class="btn">
+            <i class="fab fa-spotify"></i> Connect with Spotify
+        </a>
+        
+        <div style="margin-top: 30px; padding: 20px; background: rgba(255,255,255,0.1); border-radius: 10px;">
+            <h3 style="margin-bottom: 15px;">How it works:</h3>
+            <ul style="text-align: left; list-style: none; padding: 0;">
+                <li style="margin-bottom: 10px;"><i class="fas fa-check" style="color: #1db954; margin-right: 10px;"></i>Authorize this app with your Spotify account</li>
+                <li style="margin-bottom: 10px;"><i class="fas fa-check" style="color: #1db954; margin-right: 10px;"></i>Control playback on your desktop Spotify client</li>
+                <li style="margin-bottom: 10px;"><i class="fas fa-check" style="color: #1db954; margin-right: 10px;"></i>Access from any device on your network</li>
+                <li><i class="fas fa-check" style="color: #1db954; margin-right: 10px;"></i>No music plays through this app - it's just a remote control</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %} 

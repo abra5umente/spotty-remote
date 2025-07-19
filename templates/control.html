@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}Control - Spotify Remote Control{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h1><i class="fab fa-spotify"></i> Spotify Remote Control</h1>
+    <p>Control your desktop Spotify from anywhere</p>
+</div>
+
+<div class="card">
+    <div id="status" class="status">
+        <i class="fas fa-spinner fa-spin"></i> Connecting to Spotify...
+    </div>
+    
+    <div id="track-info" class="track-info" style="display: none;">
+        <div class="track-name" id="track-name">Loading...</div>
+        <div class="artist-name" id="artist-name">Loading...</div>
+        <div class="album-name" id="album-name">Loading...</div>
+    </div>
+    
+    <div class="progress-container">
+        <div class="progress-bar" id="progress-bar">
+            <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+        </div>
+        <div class="time-info">
+            <span id="current-time">0:00</span>
+            <span id="total-time">0:00</span>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <button class="control-btn" id="prev-btn" onclick="previousTrack()">
+            <i class="fas fa-step-backward"></i>
+        </button>
+        <button class="control-btn play-pause" id="play-pause-btn" onclick="togglePlayPause()">
+            <i class="fas fa-play" id="play-pause-icon"></i>
+        </button>
+        <button class="control-btn" id="next-btn" onclick="nextTrack()">
+            <i class="fas fa-step-forward"></i>
+        </button>
+    </div>
+    
+    <div class="volume-container">
+        <i class="fas fa-volume-down"></i>
+        <input type="range" class="volume-slider" id="volume-slider" min="0" max="100" value="50">
+        <i class="fas fa-volume-up"></i>
+    </div>
+    
+    <div class="device-info" id="device-info">
+        Device: Loading...
+    </div>
+</div>
+
+<script>
+let currentPlayback = null;
+let updateInterval = null;
+
+// Format time from milliseconds to MM:SS
+function formatTime(ms) {
+    if (!ms) return '0:00';
+    const minutes = Math.floor(ms / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
+// Update the UI with playback information
+function updatePlaybackInfo(playback) {
+    if (!playback || playback.error) {
+        document.getElementById('status').innerHTML = '<i class="fas fa-exclamation-triangle"></i> No active playback found';
+        document.getElementById('status').className = 'status error';
+        document.getElementById('track-info').style.display = 'none';
+        return;
+    }
+    
+    currentPlayback = playback;
+    
+    // Update status
+    const statusEl = document.getElementById('status');
+    if (playback.is_playing) {
+        statusEl.innerHTML = '<i class="fas fa-play"></i> Now Playing';
+        statusEl.className = 'status playing';
+        document.getElementById('play-pause-icon').className = 'fas fa-pause';
+    } else {
+        statusEl.innerHTML = '<i class="fas fa-pause"></i> Paused';
+        statusEl.className = 'status paused';
+        document.getElementById('play-pause-icon').className = 'fas fa-play';
+    }
+    
+    // Update track info
+    document.getElementById('track-info').style.display = 'block';
+    document.getElementById('track-name').textContent = playback.track_name;
+    document.getElementById('artist-name').textContent = playback.artist_name;
+    document.getElementById('album-name').textContent = playback.album_name;
+    
+    // Update progress
+    const progressPercent = playback.duration_ms > 0 ? (playback.progress_ms / playback.duration_ms) * 100 : 0;
+    document.getElementById('progress-fill').style.width = progressPercent + '%';
+    document.getElementById('current-time').textContent = formatTime(playback.progress_ms);
+    document.getElementById('total-time').textContent = formatTime(playback.duration_ms);
+    
+    // Update device info
+    document.getElementById('device-info').textContent = `Device: ${playback.device_name}`;
+}
+
+// Fetch current playback status
+async function fetchPlaybackStatus() {
+    try {
+        const response = await fetch('/api/playback');
+        const data = await response.json();
+        
+        if (response.ok) {
+            updatePlaybackInfo(data);
+        } else {
+            document.getElementById('status').innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' + (data.error || 'Error fetching playback status');
+            document.getElementById('status').className = 'status error';
+        }
+    } catch (error) {
+        document.getElementById('status').innerHTML = '<i class="fas fa-exclamation-triangle"></i> Network error';
+        document.getElementById('status').className = 'status error';
+    }
+}
+
+// Control functions
+async function togglePlayPause() {
+    try {
+        if (currentPlayback && currentPlayback.is_playing) {
+            await fetch('/api/pause', { method: 'POST' });
+        } else {
+            await fetch('/api/play', { method: 'POST' });
+        }
+        // Update status after a short delay
+        setTimeout(fetchPlaybackStatus, 500);
+    } catch (error) {
+        console.error('Error toggling play/pause:', error);
+    }
+}
+
+async function nextTrack() {
+    try {
+        await fetch('/api/next', { method: 'POST' });
+        setTimeout(fetchPlaybackStatus, 500);
+    } catch (error) {
+        console.error('Error skipping to next track:', error);
+    }
+}
+
+async function previousTrack() {
+    try {
+        await fetch('/api/previous', { method: 'POST' });
+        setTimeout(fetchPlaybackStatus, 500);
+    } catch (error) {
+        console.error('Error going to previous track:', error);
+    }
+}
+
+// Volume control
+document.getElementById('volume-slider').addEventListener('input', async function(e) {
+    const volume = e.target.value;
+    try {
+        await fetch('/api/volume', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ volume: parseInt(volume) })
+        });
+    } catch (error) {
+        console.error('Error setting volume:', error);
+    }
+});
+
+// Progress bar click to seek
+document.getElementById('progress-bar').addEventListener('click', async function(e) {
+    if (!currentPlayback) return;
+    
+    const rect = this.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const width = rect.width;
+    const percentage = clickX / width;
+    const seekTime = Math.floor(currentPlayback.duration_ms * percentage);
+    
+    try {
+        await fetch('/api/seek', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ position_ms: seekTime })
+        });
+        setTimeout(fetchPlaybackStatus, 500);
+    } catch (error) {
+        console.error('Error seeking:', error);
+    }
+});
+
+// Auto-update playback status
+function startAutoUpdate() {
+    fetchPlaybackStatus();
+    updateInterval = setInterval(fetchPlaybackStatus, 2000); // Update every 2 seconds
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    startAutoUpdate();
+});
+
+// Clean up on page unload
+window.addEventListener('beforeunload', function() {
+    if (updateInterval) {
+        clearInterval(updateInterval);
+    }
+});
+</script>
+{% endblock %} 
