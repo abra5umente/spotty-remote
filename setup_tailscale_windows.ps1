@@ -22,35 +22,78 @@ try {
 }
 
 # Check if Tailscale is running
-try {
-    $status = & tailscale status --json 2>$null
-    if ($LASTEXITCODE -eq 0) {
-        $statusData = $status | ConvertFrom-Json
-        $selfPeer = $statusData.Peer.PSObject.Properties | Where-Object { $_.Value.IsSelf -eq $true }
-        
-        if ($selfPeer) {
-            $hostname = $selfPeer.Value.DNSName
-            Write-Host "✅ Tailscale is running and connected!" -ForegroundColor Green
-            Write-Host "🌐 Your Tailscale hostname: $hostname" -ForegroundColor Cyan
+    try {
+        $status = & tailscale status --json 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            $statusData = $status | ConvertFrom-Json
             
-            # Get the redirect URI
-            $redirectUri = "https://$hostname`:5000/callback"
-            Write-Host "🔗 Spotify redirect URI: $redirectUri" -ForegroundColor Cyan
+            # Find the self peer (current machine)
+            $selfPeer = $null
+            foreach ($peer in $statusData.Peer.PSObject.Properties) {
+                if ($peer.Value.IsSelf -eq $true) {
+                    $selfPeer = $peer.Value
+                    break
+                }
+            }
             
-            Write-Host ""
-            Write-Host "📝 Next steps:" -ForegroundColor Yellow
-            Write-Host "1. Go to your Spotify Developer Dashboard" -ForegroundColor White
-            Write-Host "2. Add this redirect URI to your app:" -ForegroundColor White
-            Write-Host "   $redirectUri" -ForegroundColor Cyan
-            Write-Host "3. Update your .env file with:" -ForegroundColor White
-            Write-Host "   USE_HTTPS=true" -ForegroundColor Cyan
-            Write-Host "   DOMAIN_NAME=$hostname" -ForegroundColor Cyan
-            Write-Host "4. Start your Spotify Remote app" -ForegroundColor White
-            
-        } else {
-            Write-Host "⚠️ Tailscale is running but not connected to a network" -ForegroundColor Yellow
-            Write-Host "💡 Run: tailscale up" -ForegroundColor Cyan
-        }
+                        if ($selfPeer) {
+                $hostname = $selfPeer.DNSName
+                Write-Host "✅ Tailscale is running and connected!" -ForegroundColor Green
+                Write-Host "🌐 Your Tailscale hostname: $hostname" -ForegroundColor Cyan
+                
+                # Get the redirect URI
+                $redirectUri = "https://$hostname`:5000/callback"
+                Write-Host "🔗 Spotify redirect URI: $redirectUri" -ForegroundColor Cyan
+                
+                Write-Host ""
+                Write-Host "📝 Next steps:" -ForegroundColor Yellow
+                Write-Host "1. Go to your Spotify Developer Dashboard" -ForegroundColor White
+                Write-Host "2. Add this redirect URI to your app:" -ForegroundColor White
+                Write-Host "   $redirectUri" -ForegroundColor Cyan
+                Write-Host "3. Update your .env file with:" -ForegroundColor White
+                Write-Host "   USE_HTTPS=true" -ForegroundColor Cyan
+                Write-Host "   DOMAIN_NAME=$hostname" -ForegroundColor Cyan
+                Write-Host "4. Start your Spotify Remote app" -ForegroundColor White
+                
+            } else {
+                # Fallback: try to parse the regular status output
+                Write-Host "⚠️ Could not parse JSON status, trying fallback method..." -ForegroundColor Yellow
+                $statusText = & tailscale status 2>$null
+                if ($LASTEXITCODE -eq 0) {
+                    # Look for the line that contains our hostname
+                    $lines = $statusText -split "`n"
+                    foreach ($line in $lines) {
+                        if ($line -match "^\s*(\S+)\s+(\S+)\s+(\S+\.ts\.net)") {
+                            $ip = $matches[1]
+                            $hostname = $matches[2]
+                            $fullHostname = $matches[3]
+                            
+                            # Check if this looks like our machine (no user@ prefix)
+                            if ($hostname -notmatch "@") {
+                                Write-Host "✅ Found Tailscale hostname via fallback: $fullHostname" -ForegroundColor Green
+                                
+                                # Get the redirect URI
+                                $redirectUri = "https://$fullHostname`:5000/callback"
+                                Write-Host "🔗 Spotify redirect URI: $redirectUri" -ForegroundColor Cyan
+                                
+                                Write-Host ""
+                                Write-Host "📝 Next steps:" -ForegroundColor Yellow
+                                Write-Host "1. Go to your Spotify Developer Dashboard" -ForegroundColor White
+                                Write-Host "2. Add this redirect URI to your app:" -ForegroundColor White
+                                Write-Host "   $redirectUri" -ForegroundColor Cyan
+                                Write-Host "3. Update your .env file with:" -ForegroundColor White
+                                Write-Host "   USE_HTTPS=true" -ForegroundColor Cyan
+                                Write-Host "   DOMAIN_NAME=$fullHostname" -ForegroundColor Cyan
+                                Write-Host "4. Start your Spotify Remote app" -ForegroundColor White
+                                return
+                            }
+                        }
+                    }
+                }
+                
+                Write-Host "⚠️ Tailscale is running but could not determine hostname" -ForegroundColor Yellow
+                Write-Host "💡 Try running: tailscale up" -ForegroundColor Cyan
+            }
     } else {
         Write-Host "⚠️ Tailscale is not running" -ForegroundColor Yellow
         Write-Host "💡 Starting Tailscale..." -ForegroundColor Cyan
