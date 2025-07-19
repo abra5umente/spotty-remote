@@ -279,8 +279,8 @@ def seek():
 
 if __name__ == '__main__':
     if IS_TAILSCALE:
-        # Tailscale handles HTTPS automatically
-        print(f"🔒 Starting server on port {PORT} (Tailscale handles HTTPS)")
+        # For Tailscale, run HTTP internally and let Tailscale handle HTTPS termination
+        print(f"🔒 Starting HTTP server on port {PORT} (Tailscale will handle HTTPS)")
         print(f"📱 Access your app at: https://{DOMAIN_NAME}:{PORT}")
         
         app.run(debug=True, host='0.0.0.0', port=PORT)

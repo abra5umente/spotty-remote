@@ -46,11 +46,12 @@ def main():
     
     print(f"✅ Found Tailscale hostname: {hostname}")
     
-    # Start Tailscale Serve
+    # Start Tailscale Serve with HTTP backend
     print("\n🌐 Starting Tailscale Serve...")
     try:
-        subprocess.run(['tailscale', 'serve', '--https=5000', '--bg'], check=True)
-        print("✅ Tailscale Serve started in background")
+        # Use --http flag to tell Tailscale the backend is HTTP
+        subprocess.run(['tailscale', 'serve', '--http=5000', '--bg'], check=True)
+        print("✅ Tailscale Serve started in background (HTTP backend)")
     except subprocess.CalledProcessError as e:
         print(f"❌ Error starting Tailscale Serve: {e}")
         return

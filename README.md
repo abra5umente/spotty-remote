@@ -216,10 +216,11 @@ To control Spotify from your laptop or other devices:
 
 **Setup:**
 1. Install Tailscale on your server
-2. Get your Tailscale endpoint URL
-3. Use that URL in your `.env` file
-4. Update your Spotify app's redirect URI
-5. The app will run HTTP internally (Tailscale handles HTTPS)
+2. Run `python setup_tailscale.py` to configure Tailscale Serve
+3. Get your Tailscale endpoint URL
+4. Use that URL in your `.env` file
+5. Update your Spotify app's redirect URI
+6. The app will run HTTP internally (Tailscale handles HTTPS termination)
 
 **Benefits:**
 - No domain required
