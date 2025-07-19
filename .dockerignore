@@ -69,5 +69,4 @@ Dockerfile
 .dockerignore
 docker-compose*.yml
 
-# Development scripts
-setup_*.py 
+# Development scripts (removed - no longer needed) 

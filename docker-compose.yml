@@ -14,7 +14,6 @@ services:
       - TAILSCALE_HOSTNAME=${TAILSCALE_HOSTNAME:-spotify-remote}
     restart: unless-stopped
     volumes:
-      - ./certs:/app/certs
       - spotify_cache:/app/.cache
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/"]
