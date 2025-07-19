@@ -112,7 +112,7 @@ This will:
 
 **Windows (PowerShell):**
 ```powershell
-.\docker-run.ps1
+docker-compose up -d
 ```
 
 **Linux/Mac:**
