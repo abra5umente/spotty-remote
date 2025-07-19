@@ -3,8 +3,6 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import os
 import subprocess
-import socket
-import uuid
 import time
 from dotenv import load_dotenv
 
@@ -28,15 +26,9 @@ SCOPE = "user-read-playback-state user-modify-playback-state user-read-currently
 CACHE_DIR = os.path.join(os.getcwd(), '.cache')
 os.makedirs(CACHE_DIR, exist_ok=True)
 
-def generate_unique_hostname():
-    """Generate a unique hostname for the container"""
-    # Use container hostname or generate unique one
-    hostname = socket.gethostname()
-    if hostname == 'localhost' or hostname.startswith('spotify-remote'):
-        # Generate unique hostname
-        unique_id = str(uuid.uuid4())[:8]
-        return f"{TAILSCALE_HOSTNAME}-{unique_id}"
-    return hostname
+def get_hostname():
+    """Get the hostname for Tailscale - just use spotify-remote"""
+    return TAILSCALE_HOSTNAME
 
 def setup_tailscale():
     """Setup Tailscale connection"""
@@ -46,8 +38,8 @@ def setup_tailscale():
     
     print("🔗 Setting up Tailscale...")
     
-    # Generate unique hostname
-    hostname = generate_unique_hostname()
+    # Get hostname
+    hostname = get_hostname()
     print(f"📱 Using hostname: {hostname}")
     
     # Start Tailscale daemon in background
@@ -57,32 +49,20 @@ def setup_tailscale():
         subprocess.run(['pkill', '-f', 'tailscaled'], capture_output=True)
         time.sleep(1)
         
-        # Start tailscaled in background
+        # Start tailscaled in background with more options
         subprocess.Popen([
             'tailscaled', 
             '--tun=userspace-networking', 
             '--socks5-server=localhost:1055',
-            '--state=/tmp/tailscaled.state'
+            '--state=/tmp/tailscaled.state',
+            '--socket=/tmp/tailscaled.sock'
         ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
         print("⏳ Waiting for daemon to start...")
-        time.sleep(5)
+        time.sleep(8)  # Give more time for daemon to start
         
-        # Check if daemon is running
-        result = subprocess.run(['tailscale', 'status'], capture_output=True, text=True)
-        if result.returncode != 0:
-            print("❌ Tailscale daemon failed to start")
-            exit(1)
-            
-        print("✅ Tailscale daemon started successfully")
-        
-    except Exception as e:
-        print(f"❌ Failed to start Tailscale daemon: {e}")
-        exit(1)
-    
-    # Connect to Tailscale
-    print("🔗 Connecting to Tailscale network...")
-    try:
+        # Try to connect directly without checking status first
+        print("🔗 Connecting to Tailscale network...")
         result = subprocess.run([
             'tailscale', 'up', 
             '--authkey', TAILSCALE_AUTH_KEY,
@@ -99,6 +79,11 @@ def setup_tailscale():
         print(f"Error output: {e.stderr}")
         print("💡 Check your auth key and Tailscale network access")
         exit(1)
+    except Exception as e:
+        print(f"❌ Failed to start Tailscale daemon: {e}")
+        exit(1)
+    
+
 
 def get_tailscale_hostname():
     """Get the current Tailscale hostname"""

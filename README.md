@@ -48,17 +48,16 @@ docker-compose up -d
 ```
 
 The app will:
-- Generate a unique hostname (e.g., `spotify-remote-a1b2c3d4`)
-- Connect to Tailscale automatically
+- Connect to Tailscale automatically using `spotify-remote` hostname
 - Set up the correct Spotify redirect URI
 - Run the web interface on HTTPS
 
-Access your app at: `https://your-generated-hostname.ts.net:5000`
+Access your app at: `https://spotify-remote.your-tailscale-network.ts.net:5000`
 
 ## How It Works
 
 - **Tailscale-only**: The app connects directly to Tailscale and uses only the Tailscale network
-- **Auto hostname**: Generates unique hostname to avoid conflicts
+- **Simple hostname**: Uses `spotify-remote` hostname in your Tailscale network
 - **Dynamic redirect URI**: Automatically sets correct Spotify callback URL
 - **No manual configuration**: Everything is handled automatically
 
