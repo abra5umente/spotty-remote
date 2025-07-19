@@ -8,13 +8,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     curl \
     openssl \
-    wget \
     && rm -rf /var/lib/apt/lists/*
-
-# Install Tailscale
-RUN wget -qO- https://pkgs.tailscale.com/stable/ubuntu/jammy.noarmor.gpg | tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null && \
-    wget -qO- https://pkgs.tailscale.com/stable/ubuntu/jammy.tailscale-keyring.list | tee /etc/apt/sources.list.d/tailscale.list && \
-    apt-get update && apt-get install -y tailscale && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
 COPY requirements.txt .

@@ -48,13 +48,13 @@ A Python web application that allows you to control your desktop Spotify client 
 - ✅ Automatic renewal
 - ❌ Requires domain name and port 80 access
 
-**Option B: Tailscale (Automatic Setup)**
+**Option B: Tailscale (Host Integration)**
 - ✅ No domain required
 - ✅ Automatic HTTPS (handled by Tailscale)
 - ✅ Works across networks
-- ✅ App becomes its own Tailscale device
+- ✅ Uses host's Tailscale installation
 - ✅ No certificate generation needed
-- ❌ Requires Tailscale account and auth key
+- ❌ Requires Tailscale installed on host
 
 **Note:** Spotify requires HTTPS for callback URIs in all cases, so HTTP-only mode is not supported.
 
@@ -216,12 +216,12 @@ To control Spotify from your laptop or other devices:
 **Best for:** Personal use, quick setup
 
 **Setup:**
-1. Get a Tailscale auth key from [Tailscale Admin Console](https://login.tailscale.com/admin/settings/keys)
-2. Add the auth key to your `.env` file as `TAILSCALE_AUTH_KEY`
+1. Install Tailscale on your host machine
+2. Start Tailscale and connect to your network: `tailscale up`
 3. Set `USE_HTTPS=true` and `DOMAIN_NAME=your-tailscale-hostname.ts.net` in `.env`
-4. The app will automatically connect to Tailscale and get its hostname
-5. Update your Spotify app's redirect URI to the generated hostname
-6. No manual Tailscale setup needed - the app handles everything
+4. The app will detect your Tailscale hostname automatically
+5. Update your Spotify app's redirect URI to your Tailscale hostname
+6. Run the app - it will use your host's Tailscale installation
 
 **Benefits:**
 - No domain required

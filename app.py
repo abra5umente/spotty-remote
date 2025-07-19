@@ -52,38 +52,10 @@ def create_spotify_oauth():
         scope=SCOPE
     )
 
-def start_tailscale():
-    """Start Tailscale and get the hostname"""
-    if not TAILSCALE_AUTH_KEY:
-        print("❌ TAILSCALE_AUTH_KEY not set. Please set it in your .env file.")
-        return None
-    
-    print("🔗 Starting Tailscale...")
-    
+def get_tailscale_hostname():
+    """Get the current Tailscale hostname if Tailscale is running"""
     try:
-        # Start Tailscale with auth key
-        subprocess.run([
-            'tailscaled', '--state=/var/lib/tailscale/tailscaled.state',
-            '--socket=/var/run/tailscale/tailscaled.sock',
-            '--port=41641'
-        ], check=True, start_new_session=True)
-        
-        # Wait a moment for tailscaled to start
-        time.sleep(2)
-        
-        # Connect to Tailscale network
-        subprocess.run([
-            'tailscale', 'up',
-            '--authkey=' + TAILSCALE_AUTH_KEY,
-            '--hostname=' + TAILSCALE_HOSTNAME,
-            '--advertise-tags=tag:spotify-remote'
-        ], check=True)
-        
-        # Get the hostname
-        result = subprocess.run(['tailscale', 'ip', '-4'], capture_output=True, text=True, check=True)
-        ip = result.stdout.strip()
-        
-        # Get the hostname
+        # Check if Tailscale is running and get hostname
         result = subprocess.run(['tailscale', 'status', '--json'], capture_output=True, text=True, check=True)
         import json
         data = json.loads(result.stdout)
@@ -93,14 +65,14 @@ def start_tailscale():
             if peer.get('IsSelf', False):
                 hostname = peer.get('DNSName', '')
                 if hostname:
-                    print(f"✅ Tailscale connected: {hostname}")
+                    print(f"✅ Found Tailscale hostname: {hostname}")
                     return hostname
         
         print("⚠️ Could not get Tailscale hostname")
         return None
         
     except subprocess.CalledProcessError as e:
-        print(f"❌ Error starting Tailscale: {e}")
+        print(f"❌ Error getting Tailscale status: {e}")
         return None
     except FileNotFoundError:
         print("❌ Tailscale not installed. Please install it first.")
@@ -340,8 +312,8 @@ def seek():
 
 if __name__ == '__main__':
     if IS_TAILSCALE:
-        # Start Tailscale and get the hostname
-        tailscale_hostname = start_tailscale()
+        # Get Tailscale hostname if Tailscale is running
+        tailscale_hostname = get_tailscale_hostname()
         if tailscale_hostname:
             print(f"🔒 Starting HTTP server on port {PORT}")
             print(f"📱 Access your app at: https://{tailscale_hostname}:{PORT}")
@@ -355,7 +327,8 @@ if __name__ == '__main__':
             
             app.run(debug=True, host='0.0.0.0', port=PORT)
         else:
-            print("❌ Failed to start Tailscale. Exiting.")
+            print("❌ Tailscale not running or hostname not found.")
+            print("💡 Please start Tailscale manually or use a different setup.")
             exit(1)
     else:
         # Generate self-signed certificate for non-Tailscale HTTPS
