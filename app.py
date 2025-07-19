@@ -3,6 +3,8 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import os
 import subprocess
+import socket
+import uuid
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -14,10 +16,9 @@ app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-here')
 # Configuration
 SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
 SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
-REDIRECT_URI = os.getenv('REDIRECT_URI', 'https://localhost:5000/callback')
-DOMAIN_NAME = os.getenv('DOMAIN_NAME', '')
+TAILSCALE_AUTH_KEY = os.getenv('TAILSCALE_AUTH_KEY')
+TAILSCALE_HOSTNAME = os.getenv('TAILSCALE_HOSTNAME', 'spotify-remote')
 PORT = int(os.getenv('PORT', 5000))
-IS_TAILSCALE = '.ts.net' in DOMAIN_NAME if DOMAIN_NAME else False
 
 # Spotify OAuth scope
 SCOPE = "user-read-playback-state user-modify-playback-state user-read-currently-playing"
@@ -26,24 +27,58 @@ SCOPE = "user-read-playback-state user-modify-playback-state user-read-currently
 CACHE_DIR = os.path.join(os.getcwd(), '.cache')
 os.makedirs(CACHE_DIR, exist_ok=True)
 
-def create_spotify_oauth():
-    """Create Spotify OAuth object"""
-    return SpotifyOAuth(
-        client_id=SPOTIFY_CLIENT_ID,
-        client_secret=SPOTIFY_CLIENT_SECRET,
-        redirect_uri=REDIRECT_URI,
-        scope=SCOPE,
-        cache_path=os.path.join(CACHE_DIR, 'spotify_token_cache')
-    )
+def generate_unique_hostname():
+    """Generate a unique hostname for the container"""
+    # Use container hostname or generate unique one
+    hostname = socket.gethostname()
+    if hostname == 'localhost' or hostname.startswith('spotify-remote'):
+        # Generate unique hostname
+        unique_id = str(uuid.uuid4())[:8]
+        return f"{TAILSCALE_HOSTNAME}-{unique_id}"
+    return hostname
 
-def get_spotify_client():
-    """Get authenticated Spotify client or None if not authenticated"""
-    sp_oauth = create_spotify_oauth()
-    token_info = sp_oauth.get_cached_token()
-    return spotipy.Spotify(auth=token_info['access_token']) if token_info else None
+def setup_tailscale():
+    """Setup Tailscale connection"""
+    if not TAILSCALE_AUTH_KEY:
+        print("❌ TAILSCALE_AUTH_KEY is required")
+        exit(1)
+    
+    print("🔗 Setting up Tailscale...")
+    
+    # Generate unique hostname
+    hostname = generate_unique_hostname()
+    print(f"📱 Using hostname: {hostname}")
+    
+    # Start Tailscale daemon
+    try:
+        subprocess.run(['tailscaled', '--tun=userspace-networking', '--socks5-server=localhost:1055'], 
+                      check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError:
+        print("⚠️ Tailscaled already running or failed to start")
+    
+    # Wait for daemon to be ready
+    import time
+    time.sleep(3)
+    
+    # Connect to Tailscale
+    try:
+        result = subprocess.run([
+            'tailscale', 'up', 
+            '--authkey', TAILSCALE_AUTH_KEY,
+            '--hostname', hostname,
+            '--advertise-tags', 'tag:spotify-remote'
+        ], capture_output=True, text=True, check=True)
+        
+        print("✅ Tailscale connected successfully")
+        return hostname
+        
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Failed to connect to Tailscale: {e}")
+        print(f"Error output: {e.stderr}")
+        exit(1)
 
-def get_container_tailscale_hostname():
-    """Get the current Tailscale hostname from the container's Tailscale installation"""
+def get_tailscale_hostname():
+    """Get the current Tailscale hostname"""
     try:
         result = subprocess.run(['tailscale', 'status', '--json'], capture_output=True, text=True, check=True)
         import json
@@ -53,23 +88,42 @@ def get_container_tailscale_hostname():
             if peer.get('IsSelf', False):
                 hostname = peer.get('DNSName', '')
                 if hostname:
-                    print(f"✅ Found Tailscale hostname: {hostname}")
                     return hostname
         
-        print("⚠️ Could not get Tailscale hostname")
         return None
         
     except (subprocess.CalledProcessError, FileNotFoundError, ValueError) as e:
         print(f"❌ Error getting Tailscale status: {e}")
         return None
 
+def create_spotify_oauth(hostname):
+    """Create Spotify OAuth object with dynamic redirect URI"""
+    redirect_uri = f"https://{hostname}.ts.net:{PORT}/callback"
+    return SpotifyOAuth(
+        client_id=SPOTIFY_CLIENT_ID,
+        client_secret=SPOTIFY_CLIENT_SECRET,
+        redirect_uri=redirect_uri,
+        scope=SCOPE,
+        cache_path=os.path.join(CACHE_DIR, 'spotify_token_cache')
+    )
+
+def get_spotify_client(hostname):
+    """Get authenticated Spotify client or None if not authenticated"""
+    sp_oauth = create_spotify_oauth(hostname)
+    token_info = sp_oauth.get_cached_token()
+    return spotipy.Spotify(auth=token_info['access_token']) if token_info else None
+
 @app.route('/')
 def index():
     """Main page - shows login or control interface"""
-    sp = get_spotify_client()
+    hostname = get_tailscale_hostname()
+    if not hostname:
+        return "❌ Tailscale not connected", 500
+    
+    sp = get_spotify_client(hostname)
     
     if not sp:
-        sp_oauth = create_spotify_oauth()
+        sp_oauth = create_spotify_oauth(hostname)
         return render_template('login.html', auth_url=sp_oauth.get_authorize_url())
     
     try:
@@ -77,14 +131,18 @@ def index():
         return render_template('control.html', playback=current_playback)
     except Exception:
         # Token might be expired, redirect to login
-        sp_oauth = create_spotify_oauth()
+        sp_oauth = create_spotify_oauth(hostname)
         return render_template('login.html', auth_url=sp_oauth.get_authorize_url())
 
 @app.route('/callback')
 def callback():
     """Handle Spotify OAuth callback"""
+    hostname = get_tailscale_hostname()
+    if not hostname:
+        return "❌ Tailscale not connected", 500
+    
     try:
-        sp_oauth = create_spotify_oauth()
+        sp_oauth = create_spotify_oauth(hostname)
         session.clear()
         code = request.args.get('code')
         
@@ -107,7 +165,11 @@ def callback():
 @app.route('/api/playback')
 def get_playback():
     """Get current playback status"""
-    sp = get_spotify_client()
+    hostname = get_tailscale_hostname()
+    if not hostname:
+        return jsonify({'error': 'Tailscale not connected'}), 500
+    
+    sp = get_spotify_client(hostname)
     if not sp:
         return jsonify({'error': 'Not authenticated'}), 401
     
@@ -132,7 +194,11 @@ def get_playback():
 
 def spotify_action(action_func, *args, **kwargs):
     """Generic function to handle Spotify actions with authentication"""
-    sp = get_spotify_client()
+    hostname = get_tailscale_hostname()
+    if not hostname:
+        return jsonify({'error': 'Tailscale not connected'}), 500
+    
+    sp = get_spotify_client(hostname)
     if not sp:
         return jsonify({'error': 'Not authenticated'}), 401
     
@@ -170,10 +236,11 @@ def set_volume():
     
     volume = max(0, min(100, request.json.get('volume', 50)))
     
-    def set_vol(sp):
-        sp.volume(volume)
+    hostname = get_tailscale_hostname()
+    if not hostname:
+        return jsonify({'error': 'Tailscale not connected'}), 500
     
-    sp = get_spotify_client()
+    sp = get_spotify_client(hostname)
     if not sp:
         return jsonify({'error': 'Not authenticated'}), 401
     
@@ -193,21 +260,13 @@ def seek():
     return spotify_action(lambda sp: sp.seek_track(position_ms))
 
 if __name__ == '__main__':
-    if IS_TAILSCALE:
-        print("🔍 Detecting Tailscale hostname...")
-        tailscale_hostname = get_container_tailscale_hostname()
-        if tailscale_hostname:
-            print(f"🔒 Tailscale mode: HTTP server")
-            print(f"📱 Access your app at: https://{tailscale_hostname}:{PORT}")
-            print(f"🔗 Spotify redirect URI: https://{tailscale_hostname}:{PORT}/callback")
-        else:
-            print("❌ Tailscale not running or hostname not found.")
-            print("💡 Please check Tailscale configuration in container.")
-            exit(1)
-    else:
-        print("🔒 Local development mode: HTTP server")
-        print(f"📱 Access your app at: http://localhost:{PORT}")
-        if DOMAIN_NAME:
-            print(f"🌐 Or at: http://{DOMAIN_NAME}:{PORT}")
+    print("🚀 Starting Spotify Remote...")
+    
+    # Setup Tailscale first
+    hostname = setup_tailscale()
+    
+    print(f"🔒 Tailscale mode: HTTP server")
+    print(f"📱 Access your app at: https://{hostname}.ts.net:{PORT}")
+    print(f"🔗 Spotify redirect URI: https://{hostname}.ts.net:{PORT}/callback")
     
     app.run(debug=True, host='0.0.0.0', port=PORT) 

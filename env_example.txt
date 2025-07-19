@@ -6,11 +6,6 @@ SPOTIFY_CLIENT_SECRET=your_spotify_client_secret_here
 # Flask secret key (can be any random string)
 SECRET_KEY=your_secret_key_here
 
-# Domain Configuration
-# Set to your Tailscale hostname (e.g., your-hostname.ts.net) for Tailscale mode
-# Leave empty for local development mode
-DOMAIN_NAME=your-hostname.ts.net
-
 # Port number (optional, defaults to 5000)
 PORT=5000
 
@@ -19,7 +14,8 @@ PORT=5000
 TAILSCALE_AUTH_KEY=your_tailscale_auth_key_here
 TAILSCALE_HOSTNAME=spotify-remote
 
-# Redirect URI - The app will automatically set this based on your configuration
-# For Tailscale: https://your-tailscale-hostname.ts.net:5000/callback
-# For local development: http://localhost:5000/callback
-REDIRECT_URI=http://localhost:5000/callback 
+# Note: The app will automatically:
+# - Generate a unique hostname (e.g., spotify-remote-a1b2c3d4)
+# - Connect to Tailscale using the auth key
+# - Set up the correct redirect URI for Spotify OAuth
+# - Make the app available at https://your-hostname.ts.net:5000 

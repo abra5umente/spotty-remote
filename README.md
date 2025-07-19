@@ -1,6 +1,6 @@
 # Spotify Remote Control
 
-A simple web app to control your desktop Spotify client remotely. Works over Tailscale for secure access from anywhere.
+A simple web app to control your desktop Spotify client remotely. Works exclusively over Tailscale for secure access from anywhere.
 
 ## Features
 
@@ -10,6 +10,7 @@ A simple web app to control your desktop Spotify client remotely. Works over Tai
 - ⏱️ **Seek Control** - Click progress bar to jump to any position
 - 📱 **Responsive Design** - Works on desktop, tablet, and mobile
 - 🔒 **Secure Access** - Uses Tailscale for HTTPS and network access
+- 🤖 **Auto Setup** - Automatically generates unique hostname and connects to Tailscale
 
 ## Quick Start
 
@@ -36,7 +37,6 @@ Edit `.env`:
 SPOTIFY_CLIENT_ID=your_client_id_here
 SPOTIFY_CLIENT_SECRET=your_client_secret_here
 SECRET_KEY=any_random_string_here
-DOMAIN_NAME=your-hostname.ts.net
 TAILSCALE_AUTH_KEY=tskey-auth-xxxxxxxxx
 TAILSCALE_HOSTNAME=spotify-remote
 ```
@@ -48,35 +48,19 @@ docker-compose up -d
 ```
 
 The app will:
-- Start Tailscale in the container
-- Connect to your Tailscale network
+- Generate a unique hostname (e.g., `spotify-remote-a1b2c3d4`)
+- Connect to Tailscale automatically
+- Set up the correct Spotify redirect URI
 - Run the web interface on HTTPS
 
-Access your app at: `https://your-hostname.ts.net:5000`
+Access your app at: `https://your-generated-hostname.ts.net:5000`
 
-## Local Development
+## How It Works
 
-For local testing (no Tailscale needed):
-
-```env
-# Leave DOMAIN_NAME empty for local mode
-DOMAIN_NAME=
-REDIRECT_URI=http://localhost:5000/callback
-```
-
-```bash
-pip install -r requirements.txt
-python app.py
-```
-
-Access at: `http://localhost:5000`
-
-## Usage
-
-1. Open your app URL in a browser
-2. Click "Connect with Spotify"
-3. Authorize the app
-4. Control your desktop Spotify remotely
+- **Tailscale-only**: The app connects directly to Tailscale and uses only the Tailscale network
+- **Auto hostname**: Generates unique hostname to avoid conflicts
+- **Dynamic redirect URI**: Automatically sets correct Spotify callback URL
+- **No manual configuration**: Everything is handled automatically
 
 ## Docker Commands
 
@@ -94,14 +78,21 @@ docker-compose restart
 docker-compose -f docker-compose.prod.yml up -d
 ```
 
-## How It Works
+## Usage
 
-- Uses Spotify Web API to control your desktop client
-- Tailscale provides secure HTTPS access from anywhere
-- No music is played by the app - it only controls your existing Spotify
-- Container includes its own Tailscale installation
+1. Open your app URL in a browser (shown in startup logs)
+2. Click "Connect with Spotify"
+3. Authorize the app
+4. Control your desktop Spotify remotely
 
 ## Troubleshooting
+
+**"TAILSCALE_AUTH_KEY is required"**
+- Make sure you've set the auth key in your `.env` file
+
+**"Failed to connect to Tailscale"**
+- Check your auth key is correct
+- Verify Tailscale network is accessible
 
 **"No active playback found"**
 - Make sure Spotify desktop client is running
@@ -109,10 +100,6 @@ docker-compose -f docker-compose.prod.yml up -d
 
 **"Not authenticated"**
 - Re-authenticate with Spotify
-
-**Tailscale connection issues**
-- Check your auth key is correct
-- Verify Tailscale hostname is available
 
 ## License
 
