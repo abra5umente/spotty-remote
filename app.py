@@ -5,6 +5,7 @@ import os
 import subprocess
 import socket
 import uuid
+import time
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -49,24 +50,45 @@ def setup_tailscale():
     hostname = generate_unique_hostname()
     print(f"📱 Using hostname: {hostname}")
     
-    # Start Tailscale daemon
+    # Start Tailscale daemon in background
+    print("🔄 Starting Tailscale daemon...")
     try:
-        subprocess.run(['tailscaled', '--tun=userspace-networking', '--socks5-server=localhost:1055'], 
-                      check=True, capture_output=True, text=True)
-    except subprocess.CalledProcessError:
-        print("⚠️ Tailscaled already running or failed to start")
-    
-    # Wait for daemon to be ready
-    import time
-    time.sleep(3)
+        # Kill any existing tailscaled process
+        subprocess.run(['pkill', '-f', 'tailscaled'], capture_output=True)
+        time.sleep(1)
+        
+        # Start tailscaled in background
+        subprocess.Popen([
+            'tailscaled', 
+            '--tun=userspace-networking', 
+            '--socks5-server=localhost:1055',
+            '--state=/tmp/tailscaled.state'
+        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        print("⏳ Waiting for daemon to start...")
+        time.sleep(5)
+        
+        # Check if daemon is running
+        result = subprocess.run(['tailscale', 'status'], capture_output=True, text=True)
+        if result.returncode != 0:
+            print("❌ Tailscale daemon failed to start")
+            exit(1)
+            
+        print("✅ Tailscale daemon started successfully")
+        
+    except Exception as e:
+        print(f"❌ Failed to start Tailscale daemon: {e}")
+        exit(1)
     
     # Connect to Tailscale
+    print("🔗 Connecting to Tailscale network...")
     try:
         result = subprocess.run([
             'tailscale', 'up', 
             '--authkey', TAILSCALE_AUTH_KEY,
             '--hostname', hostname,
-            '--advertise-tags', 'tag:spotify-remote'
+            '--advertise-tags', 'tag:spotify-remote',
+            '--reset'
         ], capture_output=True, text=True, check=True)
         
         print("✅ Tailscale connected successfully")
@@ -75,6 +97,7 @@ def setup_tailscale():
     except subprocess.CalledProcessError as e:
         print(f"❌ Failed to connect to Tailscale: {e}")
         print(f"Error output: {e.stderr}")
+        print("💡 Check your auth key and Tailscale network access")
         exit(1)
 
 def get_tailscale_hostname():

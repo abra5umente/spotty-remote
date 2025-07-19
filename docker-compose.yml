@@ -3,6 +3,7 @@ services:
     build: .
     container_name: spotify-remote
     network_mode: host
+    privileged: true
     environment:
       - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
       - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
