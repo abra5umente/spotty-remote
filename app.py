@@ -36,10 +36,6 @@ PORT = int(os.getenv('PORT', 5000))
 # Check if using Tailscale (has .ts.net domain)
 IS_TAILSCALE = '.ts.net' in DOMAIN_NAME if DOMAIN_NAME else False
 
-# Tailscale configuration
-TAILSCALE_AUTH_KEY = os.getenv('TAILSCALE_AUTH_KEY', '')
-TAILSCALE_HOSTNAME = os.getenv('TAILSCALE_HOSTNAME', 'spotify-remote')
-
 # Spotify OAuth scope - we need user-read-playback-state and user-modify-playback-state
 SCOPE = "user-read-playback-state user-modify-playback-state user-read-currently-playing"
 
@@ -56,6 +52,7 @@ def get_tailscale_hostname():
     """Get the current Tailscale hostname if Tailscale is running"""
     try:
         # Check if Tailscale is running and get hostname
+        # On Windows, Tailscale runs as a service, so we use the CLI
         result = subprocess.run(['tailscale', 'status', '--json'], capture_output=True, text=True, check=True)
         import json
         data = json.loads(result.stdout)
@@ -73,9 +70,11 @@ def get_tailscale_hostname():
         
     except subprocess.CalledProcessError as e:
         print(f"❌ Error getting Tailscale status: {e}")
+        print("💡 Make sure Tailscale is running on your system")
         return None
     except FileNotFoundError:
         print("❌ Tailscale not installed. Please install it first.")
+        print("💡 Download from: https://tailscale.com/download")
         return None
 
 def generate_self_signed_cert():

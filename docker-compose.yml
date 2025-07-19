@@ -18,7 +18,6 @@ services:
     restart: unless-stopped
     volumes:
       - ./certs:/app/certs
-      - /var/run/tailscale/tailscaled.sock:/var/run/tailscale/tailscaled.sock
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/"]
       interval: 30s

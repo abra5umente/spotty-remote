@@ -217,7 +217,10 @@ To control Spotify from your laptop or other devices:
 
 **Setup:**
 1. Install Tailscale on your host machine
+   - **Windows**: Download from [tailscale.com/download](https://tailscale.com/download)
+   - **Linux/Mac**: Use your package manager or download from the website
 2. Start Tailscale and connect to your network: `tailscale up`
+   - **Windows**: Run `.\setup_tailscale_windows.ps1` for automated setup
 3. Set `USE_HTTPS=true` and `DOMAIN_NAME=your-tailscale-hostname.ts.net` in `.env`
 4. The app will detect your Tailscale hostname automatically
 5. Update your Spotify app's redirect URI to your Tailscale hostname
@@ -312,6 +315,12 @@ The app doesn't play any music itself - it only controls your existing Spotify d
 - **Tailscale**: Check that Tailscale is running and connected (no certificates needed)
 - **Self-signed certs**: Accept the security warning in your browser
 - Check certificate renewal: `./renew_cert.sh`
+
+### Windows-specific issues
+- **Tailscale not found**: Make sure Tailscale is installed and running as a Windows service
+- **Permission denied**: Run PowerShell as Administrator if needed
+- **Tailscale CLI**: Make sure `tailscale` command is available in your PATH
+- **Docker on Windows**: Use Docker Desktop with WSL2 for best compatibility
 
 ### Certificate renewal issues
 - Check if certbot is installed: `certbot --version`
