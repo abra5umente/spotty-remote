@@ -41,11 +41,16 @@ SCOPE = "user-read-playback-state user-modify-playback-state user-read-currently
 
 def create_spotify_oauth():
     """Create Spotify OAuth object"""
+    # Create cache directory if it doesn't exist
+    cache_dir = os.path.join(os.getcwd(), '.cache')
+    os.makedirs(cache_dir, exist_ok=True)
+    
     return SpotifyOAuth(
         client_id=SPOTIFY_CLIENT_ID,
         client_secret=SPOTIFY_CLIENT_SECRET,
         redirect_uri=REDIRECT_URI,
-        scope=SCOPE
+        scope=SCOPE,
+        cache_path=os.path.join(cache_dir, 'spotify_token_cache')
     )
 
 def get_tailscale_hostname():
@@ -166,12 +171,28 @@ def index():
 @app.route('/callback')
 def callback():
     """Handle Spotify OAuth callback"""
-    sp_oauth = create_spotify_oauth()
-    session.clear()
-    code = request.args.get('code')
-    token_info = sp_oauth.get_access_token(code)
-    session["token_info"] = token_info
-    return redirect('/')
+    try:
+        sp_oauth = create_spotify_oauth()
+        session.clear()
+        code = request.args.get('code')
+        
+        if not code:
+            print("❌ No authorization code received from Spotify")
+            return redirect('/')
+        
+        print(f"✅ Received authorization code from Spotify")
+        token_info = sp_oauth.get_access_token(code)
+        
+        if token_info:
+            session["token_info"] = token_info
+            print("✅ Successfully obtained access token")
+        else:
+            print("❌ Failed to get access token")
+            
+        return redirect('/')
+    except Exception as e:
+        print(f"❌ Error in callback: {e}")
+        return redirect('/')
 
 @app.route('/api/playback')
 def get_playback():

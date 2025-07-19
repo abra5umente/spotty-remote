@@ -19,6 +19,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./certs:/app/certs
+      - spotify_cache:/app/.cache
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/"]
       interval: 30s
@@ -27,6 +28,10 @@ services:
       start_period: 40s
     networks:
       - spotify-network
+
+volumes:
+  spotify_cache:
+    driver: local
 
 networks:
   spotify-network:
