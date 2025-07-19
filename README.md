@@ -1,6 +1,6 @@
 # Spotify Remote Control
 
-A simple web app to control your desktop Spotify client remotely. Works exclusively over Tailscale for secure access from anywhere.
+A simple web app to control your desktop Spotify client remotely. Works over your host's Tailscale network for secure access from anywhere.
 
 ## Features
 
@@ -9,22 +9,26 @@ A simple web app to control your desktop Spotify client remotely. Works exclusiv
 - 🔊 **Volume Control** - Adjust volume remotely
 - ⏱️ **Seek Control** - Click progress bar to jump to any position
 - 📱 **Responsive Design** - Works on desktop, tablet, and mobile
-- 🔒 **Secure Access** - Uses Tailscale for HTTPS and network access
-- 🤖 **Auto Setup** - Automatically generates unique hostname and connects to Tailscale
+- 🔒 **Secure Access** - Uses your host's Tailscale for HTTPS and network access
+- 🚀 **Ultra Simple** - No complex setup, uses what's already working
 
 ## Quick Start
 
-### 1. Get Spotify API Credentials
+### 1. Setup Tailscale on Your Host
+
+Make sure Tailscale is running on your host machine:
+
+```bash
+# Install Tailscale (if not already installed)
+# Then connect:
+tailscale up --authkey=your-auth-key
+```
+
+### 2. Get Spotify API Credentials
 
 1. Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
 2. Create a new app
 3. Copy your **Client ID** and **Client Secret**
-
-### 2. Get Tailscale Auth Key
-
-1. Go to [Tailscale Admin Console](https://login.tailscale.com/admin/settings/keys)
-2. Generate a new auth key
-3. Copy the key
 
 ### 3. Configure Environment
 
@@ -37,8 +41,7 @@ Edit `.env`:
 SPOTIFY_CLIENT_ID=your_client_id_here
 SPOTIFY_CLIENT_SECRET=your_client_secret_here
 SECRET_KEY=any_random_string_here
-TAILSCALE_AUTH_KEY=tskey-auth-xxxxxxxxx
-TAILSCALE_HOSTNAME=spotify-remote
+PORT=5000
 ```
 
 ### 4. Run with Docker
@@ -48,18 +51,18 @@ docker-compose up -d
 ```
 
 The app will:
-- Connect to Tailscale automatically using `spotify-remote` hostname
+- Automatically detect your Tailscale hostname
 - Set up the correct Spotify redirect URI
 - Run the web interface on HTTPS
 
-Access your app at: `https://spotify-remote.your-tailscale-network.ts.net:5000`
+Access your app at: `https://your-tailscale-hostname:5000`
 
 ## How It Works
 
-- **Tailscale-only**: The app connects directly to Tailscale and uses only the Tailscale network
-- **Simple hostname**: Uses `spotify-remote` hostname in your Tailscale network
-- **Dynamic redirect URI**: Automatically sets correct Spotify callback URL
-- **No manual configuration**: Everything is handled automatically
+- **Host-based Tailscale**: Uses your host's existing Tailscale installation
+- **Automatic detection**: Discovers your Tailscale hostname automatically
+- **Dynamic redirect URI**: Sets correct Spotify callback URL based on your hostname
+- **Zero complexity**: No container Tailscale, no daemon management, no auth keys
 
 ## Docker Commands
 
@@ -72,9 +75,6 @@ docker-compose down
 
 # Restart
 docker-compose restart
-
-# Production mode
-docker-compose -f docker-compose.prod.yml up -d
 ```
 
 ## Usage
@@ -86,12 +86,9 @@ docker-compose -f docker-compose.prod.yml up -d
 
 ## Troubleshooting
 
-**"TAILSCALE_AUTH_KEY is required"**
-- Make sure you've set the auth key in your `.env` file
-
-**"Failed to connect to Tailscale"**
-- Check your auth key is correct
-- Verify Tailscale network is accessible
+**"Tailscale not connected"**
+- Make sure Tailscale is running on your host: `tailscale status`
+- Connect to Tailscale: `tailscale up --authkey=your-auth-key`
 
 **"No active playback found"**
 - Make sure Spotify desktop client is running
@@ -99,6 +96,21 @@ docker-compose -f docker-compose.prod.yml up -d
 
 **"Not authenticated"**
 - Re-authenticate with Spotify
+
+**"Failed to get Tailscale status"**
+- Ensure Tailscale CLI is available on your host
+- Check Tailscale is properly installed and running
+
+## Architecture
+
+This app follows the **KISS principle**:
+
+- ✅ **No container Tailscale** - uses host's working installation
+- ✅ **No daemon management** - host handles everything
+- ✅ **No privileged containers** - standard security
+- ✅ **No auth key management** - host manages authentication
+- ✅ **Automatic hostname** - uses whatever hostname you have
+- ✅ **Works immediately** - no setup, no waiting
 
 ## License
 
