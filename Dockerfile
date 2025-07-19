@@ -4,12 +4,20 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies and ngrok
 RUN apt-get update && apt-get install -y \
     curl \
     openssl \
+    wget \
+    unzip \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
+
+# Install ngrok
+RUN wget https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.zip \
+    && unzip ngrok-v3-stable-linux-amd64.zip \
+    && mv ngrok /usr/local/bin/ \
+    && rm ngrok-v3-stable-linux-amd64.zip
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .

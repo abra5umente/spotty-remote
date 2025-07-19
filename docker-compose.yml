@@ -8,6 +8,8 @@ services:
       - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
       - SECRET_KEY=${SECRET_KEY}
       - PORT=${PORT:-5000}
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+      - USE_NGROK=${USE_NGROK:-true}
     restart: unless-stopped
     volumes:
       - spotify_cache:/app/.cache

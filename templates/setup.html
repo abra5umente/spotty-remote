@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Setup - Spotify Remote{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0">🚀 Setup Spotify Remote</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h5>📋 Setup Instructions</h5>
+                        <p>To use Spotify Remote, you need to configure your Spotify app with a public URL. Follow these steps:</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <h5>Step 1: Start ngrok tunnel</h5>
+                        <p>Click the button below to start a public tunnel:</p>
+                        <button id="startNgrokBtn" class="btn btn-primary">
+                            <span id="btnText">🚀 Start ngrok tunnel</span>
+                            <span id="btnSpinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+                        </button>
+                    </div>
+
+                    <div id="ngrokResult" class="d-none">
+                        <div class="alert alert-success">
+                            <h5>✅ ngrok tunnel started!</h5>
+                            <div class="mb-3">
+                                <strong>Public URL:</strong>
+                                <code id="ngrokUrl" class="d-block mt-1 p-2 bg-light rounded"></code>
+                            </div>
+                            <div class="mb-3">
+                                <strong>Callback URL for Spotify:</strong>
+                                <code id="callbackUrl" class="d-block mt-1 p-2 bg-light rounded"></code>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <h5>⚠️ Important: Configure Spotify App</h5>
+                            <p>Before continuing, you need to add the callback URL to your Spotify app:</p>
+                            <ol>
+                                <li>Go to <a href="https://developer.spotify.com/dashboard" target="_blank">Spotify Developer Dashboard</a></li>
+                                <li>Select your app</li>
+                                <li>Click "Edit Settings"</li>
+                                <li>Add the callback URL above to "Redirect URIs"</li>
+                                <li>Click "Save"</li>
+                            </ol>
+                        </div>
+
+                        <div class="text-center">
+                            <button id="continueBtn" class="btn btn-success btn-lg" disabled>
+                                🎵 Continue to Spotify Remote
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="errorResult" class="d-none">
+                        <div class="alert alert-danger">
+                            <h5>❌ Error starting ngrok</h5>
+                            <p id="errorMessage"></p>
+                            <p>Make sure you have:</p>
+                            <ul>
+                                <li>Set the <code>NGROK_AUTHTOKEN</code> environment variable</li>
+                                <li>A valid ngrok authtoken from <a href="https://dashboard.ngrok.com/get-started/your-authtoken" target="_blank">ngrok dashboard</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+window.addEventListener('DOMContentLoaded', function() {
+    const ngrokResult = document.getElementById('ngrokResult');
+    const errorResult = document.getElementById('errorResult');
+    const continueBtn = document.getElementById('continueBtn');
+    const startNgrokBtn = document.getElementById('startNgrokBtn');
+    const btnText = document.getElementById('btnText');
+    const btnSpinner = document.getElementById('btnSpinner');
+
+    // Hide both result divs and disable continue on page load
+    ngrokResult.classList.add('d-none');
+    errorResult.classList.add('d-none');
+    continueBtn.setAttribute('disabled', 'disabled');
+
+    startNgrokBtn.addEventListener('click', async function() {
+        // Hide both on new attempt
+        ngrokResult.classList.add('d-none');
+        errorResult.classList.add('d-none');
+        continueBtn.setAttribute('disabled', 'disabled');
+
+        // Show loading state
+        startNgrokBtn.disabled = true;
+        btnText.textContent = 'Starting ngrok...';
+        btnSpinner.classList.remove('d-none');
+
+        try {
+            const response = await fetch('/api/start-ngrok', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Show success
+                document.getElementById('ngrokUrl').textContent = data.url;
+                document.getElementById('callbackUrl').textContent = data.callback_url;
+                ngrokResult.classList.remove('d-none');
+                errorResult.classList.add('d-none');
+                continueBtn.removeAttribute('disabled');
+            } else {
+                // Show error
+                document.getElementById('errorMessage').textContent = data.error || 'Unknown error occurred';
+                errorResult.classList.remove('d-none');
+                ngrokResult.classList.add('d-none');
+                continueBtn.setAttribute('disabled', 'disabled');
+            }
+        } catch (error) {
+            // Show error
+            document.getElementById('errorMessage').textContent = 'Network error: ' + error.message;
+            errorResult.classList.remove('d-none');
+            ngrokResult.classList.add('d-none');
+            continueBtn.setAttribute('disabled', 'disabled');
+        } finally {
+            // Reset button state
+            startNgrokBtn.disabled = false;
+            btnText.textContent = '🚀 Start ngrok tunnel';
+            btnSpinner.classList.add('d-none');
+        }
+    });
+
+    continueBtn.addEventListener('click', function() {
+        window.location.href = '/';
+    });
+});
+</script>
+{% endblock %} 

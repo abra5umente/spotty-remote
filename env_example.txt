@@ -9,9 +9,13 @@ SECRET_KEY=your_secret_key_here
 # Port number (optional, defaults to 5000)
 PORT=5000
 
-# Note: This app uses the host's Tailscale installation
-# Make sure Tailscale is running on your host machine:
-# 1. Install Tailscale on your host
-# 2. Run: tailscale up --authkey=your-auth-key
-# 3. The app will automatically detect your Tailscale hostname
-# 4. Access at: https://your-tailscale-hostname:5000 
+# Ngrok Configuration
+# Get your authtoken from https://dashboard.ngrok.com/get-started/your-authtoken
+NGROK_AUTHTOKEN=your_ngrok_authtoken_here
+
+# Enable/disable ngrok (optional, defaults to true)
+USE_NGROK=true
+
+# Note: This app automatically starts ngrok to expose your local server publicly
+# The Spotify OAuth redirect URI is automatically configured based on the ngrok URL
+# Access at: https://your-ngrok-url.ngrok.io (or http://localhost:5000 if ngrok is disabled) 
