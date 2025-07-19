@@ -12,6 +12,7 @@ A Python web application that allows you to control your desktop Spotify client 
 - 🔄 **Real-time Updates** - Live track information and playback status
 - 🌐 **Network Access** - Control from any device on your network
 - 🔒 **HTTPS Support** - Secure connections with Let's Encrypt or Tailscale
+- 🚀 **Smart HTTPS Detection** - Automatically chooses the best HTTPS method
 
 ## Prerequisites
 
@@ -42,21 +43,31 @@ A Python web application that allows you to control your desktop Spotify client 
 
 #### 2. Choose Your HTTPS Setup
 
-**Option A: Let's Encrypt (Recommended for Production)**
+The app automatically detects and uses the best HTTPS method:
+
+**Option A: Let's Encrypt (Production)**
 - ✅ Free, trusted certificates
 - ✅ Works with any domain
 - ✅ Automatic renewal
+- ✅ Automatically detected when certificates are present
 - ❌ Requires domain name and port 80 access
 
-**Option B: Tailscale (Host Integration)**
+**Option B: Tailscale (Easy Setup)**
 - ✅ No domain required
 - ✅ Automatic HTTPS (handled by Tailscale)
 - ✅ Works across networks
 - ✅ Uses host's Tailscale installation
 - ✅ No certificate generation needed
+- ✅ Automatically detected when `.ts.net` domain is used
 - ❌ Requires Tailscale installed on host
 
-**Note:** Spotify requires HTTPS for callback URIs in all cases, so HTTP-only mode is not supported.
+**Option C: Local Development**
+- ✅ Simple HTTP server for local development
+- ✅ No certificates needed
+- ✅ Works for testing and development
+- ❌ Not suitable for production (Spotify requires HTTPS)
+
+**Note:** The app automatically chooses the best method based on your configuration.
 
 #### 3. Configure Environment Variables
 
@@ -72,7 +83,6 @@ A Python web application that allows you to control your desktop Spotify client 
    SPOTIFY_CLIENT_ID=your_actual_client_id_here
    SPOTIFY_CLIENT_SECRET=your_actual_client_secret_here
    SECRET_KEY=any_random_string_here
-   USE_HTTPS=true
    DOMAIN_NAME=your-domain.com
    REDIRECT_URI=https://your-domain.com:5000/callback
    ```
@@ -82,9 +92,16 @@ A Python web application that allows you to control your desktop Spotify client 
    SPOTIFY_CLIENT_ID=your_actual_client_id_here
    SPOTIFY_CLIENT_SECRET=your_actual_client_secret_here
    SECRET_KEY=any_random_string_here
-   USE_HTTPS=true
    DOMAIN_NAME=your-tailscale-endpoint.ts.net
    REDIRECT_URI=https://your-tailscale-endpoint.ts.net:5000/callback
+   ```
+
+   **For Local Development (Option C):**
+   ```
+   SPOTIFY_CLIENT_ID=your_actual_client_id_here
+   SPOTIFY_CLIENT_SECRET=your_actual_client_secret_here
+   SECRET_KEY=any_random_string_here
+   REDIRECT_URI=http://localhost:5000/callback
    ```
 
 
@@ -107,6 +124,8 @@ This will:
 - Domain name pointing to your server
 - Port 80 accessible from the internet
 - Root/sudo access on your server
+
+**Note:** The app automatically detects Let's Encrypt certificates when they're present in the `./certs/` directory.
 
 #### 5. Build and Run with Docker
 
@@ -156,15 +175,19 @@ python setup_letsencrypt.py
 python app.py
 ```
 
-The app will start on:
-- **HTTPS**: `https://localhost:5000` or `https://your-domain.com:5000`
+The app will automatically detect your setup and start with the appropriate configuration:
+- **Let's Encrypt**: `https://your-domain.com:5000`
+- **Tailscale**: `https://your-tailscale-hostname.ts.net:5000`
+- **Local Development**: `http://localhost:5000`
 
 ## Usage
 
 ### First Time Setup
 
 1. Open your browser and go to your app URL:
-   - **HTTPS**: `https://localhost:5000` or `https://your-domain.com:5000`
+   - **Let's Encrypt**: `https://your-domain.com:5000`
+   - **Tailscale**: `https://your-tailscale-hostname.ts.net:5000`
+   - **Local Development**: `http://localhost:5000`
 2. Click "Connect with Spotify"
 3. Authorize the app with your Spotify account
 4. You'll be redirected back to the control interface
@@ -195,6 +218,8 @@ To control Spotify from your laptop or other devices:
 
 ## HTTPS Setup Options
 
+The app automatically detects and uses the best HTTPS method based on your configuration:
+
 ### Option A: Let's Encrypt (Production)
 
 **Best for:** Production servers with domain names
@@ -204,12 +229,14 @@ To control Spotify from your laptop or other devices:
 2. Ensure port 80 is accessible from the internet
 3. Run: `python setup_letsencrypt.py`
 4. Follow the prompts to generate certificates
+5. The app automatically detects Let's Encrypt certificates
 
 **Benefits:**
 - Free, trusted certificates
 - Automatic renewal
 - Industry standard
 - Works with any domain
+- Automatically detected by the app
 
 ### Option B: Tailscale (Easy)
 
@@ -221,16 +248,31 @@ To control Spotify from your laptop or other devices:
    - **Linux/Mac**: Use your package manager or download from the website
 2. Start Tailscale and connect to your network: `tailscale up`
    - **Windows**: Run `.\setup_tailscale_windows.ps1` for automated setup
-3. Set `USE_HTTPS=true` and `DOMAIN_NAME=your-tailscale-hostname.ts.net` in `.env`
-4. The app will detect your Tailscale hostname automatically
+3. Set `DOMAIN_NAME=your-tailscale-hostname.ts.net` in `.env`
+4. The app automatically detects Tailscale domains (`.ts.net`)
 5. Update your Spotify app's redirect URI to your Tailscale hostname
 6. Run the app - it will use your host's Tailscale installation
 
 **Benefits:**
 - No domain required
-- Automatic HTTPS
+- Automatic HTTPS (handled by Tailscale)
 - Works across networks
 - Simple setup
+- Automatically detected by the app
+
+### Option C: Local Development
+
+**Best for:** Testing and development
+
+**Setup:**
+1. No special configuration needed
+2. Run the app normally: `python app.py`
+3. Access via `http://localhost:5000`
+
+**Benefits:**
+- Simple setup
+- No certificates needed
+- Perfect for development and testing
 
 
 
@@ -313,7 +355,7 @@ The app doesn't play any music itself - it only controls your existing Spotify d
 ### HTTPS/SSL issues
 - **Let's Encrypt**: Make sure port 80 is open and domain points to your server
 - **Tailscale**: Check that Tailscale is running and connected (no certificates needed)
-- **Self-signed certs**: Accept the security warning in your browser
+- **Local Development**: Use HTTP for local development (no certificates needed)
 - Check certificate renewal: `./renew_cert.sh`
 
 ### Windows-specific issues
