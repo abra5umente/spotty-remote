@@ -9,7 +9,7 @@ services:
       - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
       - SECRET_KEY=${SECRET_KEY}
       - REDIRECT_URI=${REDIRECT_URI}
-      - USE_HTTPS=${USE_HTTPS:-false}
+      - USE_HTTPS=${USE_HTTPS:-true}
       - DOMAIN_NAME=${DOMAIN_NAME:-}
       - CERT_PATH=${CERT_PATH:-./certs}
       - PORT=${PORT:-5000}

@@ -23,8 +23,8 @@ SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
 SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
 REDIRECT_URI = os.getenv('REDIRECT_URI', 'http://localhost:5000/callback')
 
-# HTTPS configuration
-USE_HTTPS = os.getenv('USE_HTTPS', 'false').lower() == 'true'
+# HTTPS configuration (required by Spotify)
+USE_HTTPS = os.getenv('USE_HTTPS', 'true').lower() == 'true'
 DOMAIN_NAME = os.getenv('DOMAIN_NAME', '')
 CERT_PATH = os.getenv('CERT_PATH', './certs')
 PORT = int(os.getenv('PORT', 5000))
@@ -274,20 +274,14 @@ def seek():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    if USE_HTTPS:
-        cert_file, key_file = generate_self_signed_cert()
-        ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        ssl_context.load_cert_chain(cert_file, key_file)
-        
-        print(f"🔒 Starting HTTPS server on port {PORT}")
-        print(f"📱 Access your app at: https://localhost:{PORT}")
-        if DOMAIN_NAME:
-            print(f"🌐 Or at: https://{DOMAIN_NAME}:{PORT}")
-        
-        app.run(debug=True, host='0.0.0.0', port=PORT, ssl_context=ssl_context)
-    else:
-        print(f"🌐 Starting HTTP server on port {PORT}")
-        print(f"📱 Access your app at: http://localhost:{PORT}")
-        print("⚠️  Note: Spotify requires HTTPS for production. Use USE_HTTPS=true for HTTPS mode.")
-        
-        app.run(debug=True, host='0.0.0.0', port=PORT) 
+    # Spotify requires HTTPS for callback URIs
+    cert_file, key_file = generate_self_signed_cert()
+    ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+    ssl_context.load_cert_chain(cert_file, key_file)
+    
+    print(f"🔒 Starting HTTPS server on port {PORT}")
+    print(f"📱 Access your app at: https://localhost:{PORT}")
+    if DOMAIN_NAME:
+        print(f"🌐 Or at: https://{DOMAIN_NAME}:{PORT}")
+    
+    app.run(debug=True, host='0.0.0.0', port=PORT, ssl_context=ssl_context) 

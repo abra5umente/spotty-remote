@@ -54,10 +54,7 @@ A Python web application that allows you to control your desktop Spotify client 
 - ✅ Works across networks
 - ❌ Requires Tailscale account
 
-**Option C: HTTP Only (Development)**
-- ✅ Simple setup
-- ❌ Not secure
-- ❌ Spotify may reject in production
+**Note:** Spotify requires HTTPS for callback URIs in all cases, so HTTP-only mode is not supported.
 
 #### 3. Configure Environment Variables
 
@@ -88,14 +85,7 @@ A Python web application that allows you to control your desktop Spotify client 
    REDIRECT_URI=https://your-tailscale-endpoint.ts.net:5000/callback
    ```
 
-   **For HTTP Development (Option C):**
-   ```
-   SPOTIFY_CLIENT_ID=your_actual_client_id_here
-   SPOTIFY_CLIENT_SECRET=your_actual_client_secret_here
-   SECRET_KEY=any_random_string_here
-   USE_HTTPS=false
-   REDIRECT_URI=http://localhost:5000/callback
-   ```
+
 
 #### 4. Set Up HTTPS (If Using Let's Encrypt)
 
@@ -165,7 +155,6 @@ python app.py
 ```
 
 The app will start on:
-- **HTTP**: `http://localhost:5000`
 - **HTTPS**: `https://localhost:5000` or `https://your-domain.com:5000`
 
 ## Usage
@@ -173,7 +162,6 @@ The app will start on:
 ### First Time Setup
 
 1. Open your browser and go to your app URL:
-   - **HTTP**: `http://localhost:5000`
    - **HTTPS**: `https://localhost:5000` or `https://your-domain.com:5000`
 2. Click "Connect with Spotify"
 3. Authorize the app with your Spotify account
@@ -237,18 +225,7 @@ To control Spotify from your laptop or other devices:
 - Works across networks
 - Simple setup
 
-### Option C: HTTP Only (Development)
 
-**Best for:** Local development only
-
-**Setup:**
-1. Use `USE_HTTPS=false` in your `.env`
-2. Use `http://localhost:5000/callback` as redirect URI
-
-**Limitations:**
-- Not secure
-- May not work with Spotify in production
-- Only for development/testing
 
 ## Docker Management
 

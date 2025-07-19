@@ -7,8 +7,8 @@ SPOTIFY_CLIENT_SECRET=your_spotify_client_secret_here
 SECRET_KEY=your_secret_key_here
 
 # HTTPS Configuration
-# Set to 'true' to enable HTTPS (required for Spotify production)
-USE_HTTPS=false
+# HTTPS is required by Spotify for callback URIs
+USE_HTTPS=true
 
 # Domain name for HTTPS (optional, defaults to localhost)
 DOMAIN_NAME=your-domain.com
@@ -20,7 +20,7 @@ CERT_PATH=./certs
 PORT=5000
 
 # Redirect URI - Choose based on your setup:
-# For HTTP (development): http://localhost:5000/callback
 # For HTTPS (production): https://your-domain.com:5000/callback
 # For Tailscale: https://your-tailscale-endpoint.ts.net:5000/callback
-REDIRECT_URI=http://localhost:5000/callback 
+# For local development: https://localhost:5000/callback
+REDIRECT_URI=https://localhost:5000/callback 
