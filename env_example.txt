@@ -6,11 +6,11 @@ SPOTIFY_CLIENT_SECRET=your_spotify_client_secret_here
 # Flask secret key (can be any random string)
 SECRET_KEY=your_secret_key_here
 
-# HTTPS Configuration
-# HTTPS is required by Spotify for callback URIs
-USE_HTTPS=true
-
-# Domain name for HTTPS (optional, defaults to localhost)
+# Domain Configuration
+# The app automatically detects the best HTTPS method:
+# - Let's Encrypt: When ./certs/fullchain.pem exists
+# - Tailscale: When DOMAIN_NAME contains .ts.net
+# - Local Development: HTTP for localhost
 DOMAIN_NAME=your-domain.com
 
 # Certificate path (optional, defaults to ./certs)
@@ -19,11 +19,13 @@ CERT_PATH=./certs
 # Port number (optional, defaults to 5000)
 PORT=5000
 
-# Tailscale hostname (optional, defaults to spotify-remote)
+# Tailscale Configuration (for container-based Tailscale)
+# Get auth key from https://login.tailscale.com/admin/settings/keys
+TAILSCALE_AUTH_KEY=your_tailscale_auth_key_here
 TAILSCALE_HOSTNAME=spotify-remote
 
-# Redirect URI - Choose based on your setup:
-# For HTTPS (production): https://your-domain.com:5000/callback
-# For Tailscale: https://your-tailscale-endpoint.ts.net:5000/callback
-# For local development: https://localhost:5000/callback
-REDIRECT_URI=https://localhost:5000/callback 
+# Redirect URI - The app will automatically set this based on your configuration
+# For Let's Encrypt: https://your-domain.com:5000/callback
+# For Tailscale: https://your-tailscale-hostname.ts.net:5000/callback
+# For local development: http://localhost:5000/callback
+REDIRECT_URI=http://localhost:5000/callback 

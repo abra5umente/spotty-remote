@@ -284,27 +284,16 @@ if __name__ == '__main__':
     # Determine the correct setup based on configuration
     if IS_TAILSCALE:
         # Tailscale mode: HTTP server (Tailscale handles HTTPS)
-        if is_docker:
-            # In Docker, use the provided domain
-            if DOMAIN_NAME and '.ts.net' in DOMAIN_NAME:
-                print(f"🔒 Tailscale mode (Docker): HTTP server")
-                print(f"📱 Access your app at: https://{DOMAIN_NAME}:{PORT}")
-                print(f"🔗 Spotify redirect URI: https://{DOMAIN_NAME}:{PORT}/callback")
-            else:
-                print("❌ Tailscale domain not provided in Docker")
-                exit(1)
+        print("🔍 Detecting Tailscale hostname...")
+        tailscale_hostname = get_tailscale_hostname()
+        if tailscale_hostname:
+            print(f"🔒 Tailscale mode: HTTP server")
+            print(f"📱 Access your app at: https://{tailscale_hostname}:{PORT}")
+            print(f"🔗 Spotify redirect URI: https://{tailscale_hostname}:{PORT}/callback")
         else:
-            # Local Tailscale: detect hostname
-            print("🔍 Detecting Tailscale hostname...")
-            tailscale_hostname = get_tailscale_hostname()
-            if tailscale_hostname:
-                print(f"🔒 Tailscale mode (Local): HTTP server")
-                print(f"📱 Access your app at: https://{tailscale_hostname}:{PORT}")
-                print(f"🔗 Spotify redirect URI: https://{tailscale_hostname}:{PORT}/callback")
-            else:
-                print("❌ Tailscale not running or hostname not found.")
-                print("💡 Please start Tailscale manually or use a different setup.")
-                exit(1)
+            print("❌ Tailscale not running or hostname not found.")
+            print("💡 Please start Tailscale manually or use a different setup.")
+            exit(1)
         
         # Start HTTP server for Tailscale
         app.run(debug=True, host='0.0.0.0', port=PORT)
