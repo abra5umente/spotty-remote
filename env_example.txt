@@ -19,6 +19,13 @@ CERT_PATH=./certs
 # Port number (optional, defaults to 5000)
 PORT=5000
 
+# Tailscale Configuration (for automatic Tailscale setup)
+# Get auth key from: https://login.tailscale.com/admin/settings/keys
+TAILSCALE_AUTH_KEY=tskey-auth-xxxxxxxxx-xxxxxxxxx
+
+# Tailscale hostname (optional, defaults to spotify-remote)
+TAILSCALE_HOSTNAME=spotify-remote
+
 # Redirect URI - Choose based on your setup:
 # For HTTPS (production): https://your-domain.com:5000/callback
 # For Tailscale: https://your-tailscale-endpoint.ts.net:5000/callback

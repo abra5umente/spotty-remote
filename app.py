@@ -6,6 +6,9 @@ from dotenv import load_dotenv
 import json
 import ssl
 import ipaddress
+import subprocess
+import threading
+import time
 from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes, serialization
@@ -33,6 +36,10 @@ PORT = int(os.getenv('PORT', 5000))
 # Check if using Tailscale (has .ts.net domain)
 IS_TAILSCALE = '.ts.net' in DOMAIN_NAME if DOMAIN_NAME else False
 
+# Tailscale configuration
+TAILSCALE_AUTH_KEY = os.getenv('TAILSCALE_AUTH_KEY', '')
+TAILSCALE_HOSTNAME = os.getenv('TAILSCALE_HOSTNAME', 'spotify-remote')
+
 # Spotify OAuth scope - we need user-read-playback-state and user-modify-playback-state
 SCOPE = "user-read-playback-state user-modify-playback-state user-read-currently-playing"
 
@@ -44,6 +51,60 @@ def create_spotify_oauth():
         redirect_uri=REDIRECT_URI,
         scope=SCOPE
     )
+
+def start_tailscale():
+    """Start Tailscale and get the hostname"""
+    if not TAILSCALE_AUTH_KEY:
+        print("❌ TAILSCALE_AUTH_KEY not set. Please set it in your .env file.")
+        return None
+    
+    print("🔗 Starting Tailscale...")
+    
+    try:
+        # Start Tailscale with auth key
+        subprocess.run([
+            'tailscaled', '--state=/var/lib/tailscale/tailscaled.state',
+            '--socket=/var/run/tailscale/tailscaled.sock',
+            '--port=41641'
+        ], check=True, start_new_session=True)
+        
+        # Wait a moment for tailscaled to start
+        time.sleep(2)
+        
+        # Connect to Tailscale network
+        subprocess.run([
+            'tailscale', 'up',
+            '--authkey=' + TAILSCALE_AUTH_KEY,
+            '--hostname=' + TAILSCALE_HOSTNAME,
+            '--advertise-tags=tag:spotify-remote'
+        ], check=True)
+        
+        # Get the hostname
+        result = subprocess.run(['tailscale', 'ip', '-4'], capture_output=True, text=True, check=True)
+        ip = result.stdout.strip()
+        
+        # Get the hostname
+        result = subprocess.run(['tailscale', 'status', '--json'], capture_output=True, text=True, check=True)
+        import json
+        data = json.loads(result.stdout)
+        
+        # Find our hostname
+        for peer in data.get('Peer', {}).values():
+            if peer.get('IsSelf', False):
+                hostname = peer.get('DNSName', '')
+                if hostname:
+                    print(f"✅ Tailscale connected: {hostname}")
+                    return hostname
+        
+        print("⚠️ Could not get Tailscale hostname")
+        return None
+        
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Error starting Tailscale: {e}")
+        return None
+    except FileNotFoundError:
+        print("❌ Tailscale not installed. Please install it first.")
+        return None
 
 def generate_self_signed_cert():
     """Generate a self-signed certificate for development"""
@@ -279,11 +340,23 @@ def seek():
 
 if __name__ == '__main__':
     if IS_TAILSCALE:
-        # For Tailscale, run HTTP internally and let Tailscale handle HTTPS termination
-        print(f"🔒 Starting HTTP server on port {PORT} (Tailscale will handle HTTPS)")
-        print(f"📱 Access your app at: https://{DOMAIN_NAME}:{PORT}")
-        
-        app.run(debug=True, host='0.0.0.0', port=PORT)
+        # Start Tailscale and get the hostname
+        tailscale_hostname = start_tailscale()
+        if tailscale_hostname:
+            print(f"🔒 Starting HTTP server on port {PORT}")
+            print(f"📱 Access your app at: https://{tailscale_hostname}:{PORT}")
+            
+            # Update the redirect URI for Spotify
+            spotify_redirect_uri = f"https://{tailscale_hostname}:{PORT}/callback"
+            print(f"🔗 Spotify redirect URI: {spotify_redirect_uri}")
+            
+            # Update the OAuth object with the new redirect URI
+            app.config['SPOTIFY_REDIRECT_URI'] = spotify_redirect_uri
+            
+            app.run(debug=True, host='0.0.0.0', port=PORT)
+        else:
+            print("❌ Failed to start Tailscale. Exiting.")
+            exit(1)
     else:
         # Generate self-signed certificate for non-Tailscale HTTPS
         cert_file, key_file = generate_self_signed_cert()
