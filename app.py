@@ -14,8 +14,6 @@ app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-here')
 # Configuration
 SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
 SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
-TAILSCALE_AUTH_KEY = os.getenv('TAILSCALE_AUTH_KEY')
-TAILSCALE_HOSTNAME = os.getenv('TAILSCALE_HOSTNAME', 'spotify-remote')
 PORT = int(os.getenv('PORT', 5000))
 
 # Spotify OAuth scope
@@ -25,43 +23,10 @@ SCOPE = "user-read-playback-state user-modify-playback-state user-read-currently
 CACHE_DIR = os.path.join(os.getcwd(), '.cache')
 os.makedirs(CACHE_DIR, exist_ok=True)
 
-def get_hostname():
-    """Get the hostname for Tailscale - just use spotify-remote"""
-    return TAILSCALE_HOSTNAME
-
-def setup_tailscale():
-    """Setup Tailscale connection"""
-    if not TAILSCALE_AUTH_KEY:
-        print("❌ TAILSCALE_AUTH_KEY is required")
-        exit(1)
-    
-    print("🔗 Connecting to Tailscale...")
-    
-    # Get hostname
-    hostname = get_hostname()
-    print(f"📱 Using hostname: {hostname}")
-    
-    # Simple Tailscale connection
-    try:
-        result = subprocess.run([
-            'tailscale', 'up', 
-            '--authkey', TAILSCALE_AUTH_KEY,
-            '--hostname', hostname,
-            '--advertise-tags', 'tag:spotify-remote'
-        ], capture_output=True, text=True, check=True)
-        
-        print("✅ Tailscale connected successfully")
-        return hostname
-        
-    except subprocess.CalledProcessError as e:
-        print(f"❌ Failed to connect to Tailscale: {e}")
-        print(f"Error output: {e.stderr}")
-        exit(1)
-    
 
 
 def get_tailscale_hostname():
-    """Get the current Tailscale hostname"""
+    """Get the current Tailscale hostname from the host's Tailscale installation"""
     try:
         result = subprocess.run(['tailscale', 'status', '--json'], capture_output=True, text=True, check=True)
         import json
@@ -245,11 +210,15 @@ def seek():
 if __name__ == '__main__':
     print("🚀 Starting Spotify Remote...")
     
-    # Setup Tailscale first
-    hostname = setup_tailscale()
+    # Get Tailscale hostname from host
+    hostname = get_tailscale_hostname()
+    if not hostname:
+        print("❌ Tailscale not connected. Please connect to Tailscale first.")
+        print("💡 Run: tailscale up --authkey=your-auth-key")
+        exit(1)
     
-    print(f"🔒 Tailscale mode: HTTP server")
-    print(f"📱 Access your app at: https://{hostname}.ts.net:{PORT}")
-    print(f"🔗 Spotify redirect URI: https://{hostname}.ts.net:{PORT}/callback")
+    print(f"🔒 Using Tailscale hostname: {hostname}")
+    print(f"📱 Access your app at: https://{hostname}:{PORT}")
+    print(f"🔗 Spotify redirect URI: https://{hostname}:{PORT}/callback")
     
     app.run(debug=True, host='0.0.0.0', port=PORT) 
