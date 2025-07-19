@@ -1,395 +1,119 @@
 # Spotify Remote Control
 
-A Python web application that allows you to control your desktop Spotify client remotely from any device on your network. This app acts as a remote control - it doesn't play music itself, but controls playback on your desktop Spotify client.
+A simple web app to control your desktop Spotify client remotely. Works over Tailscale for secure access from anywhere.
 
 ## Features
 
 - 🎵 **Play/Pause** - Control playback on your desktop Spotify
 - ⏭️ **Next/Previous** - Skip tracks or go back
 - 🔊 **Volume Control** - Adjust volume remotely
-- ⏱️ **Seek Control** - Click on progress bar to jump to any position
+- ⏱️ **Seek Control** - Click progress bar to jump to any position
 - 📱 **Responsive Design** - Works on desktop, tablet, and mobile
-- 🔄 **Real-time Updates** - Live track information and playback status
-- 🌐 **Network Access** - Control from any device on your network
-- 🔒 **HTTPS Support** - Secure connections with Let's Encrypt or Tailscale
-- 🚀 **Smart HTTPS Detection** - Automatically chooses the best HTTPS method
+- 🔒 **Secure Access** - Uses Tailscale for HTTPS and network access
 
-## Prerequisites
+## Quick Start
 
-- Python 3.7 or higher
-- A Spotify account
-- Spotify desktop client installed and running on your computer
-- Spotify Developer account (free)
-
-## Setup Instructions
-
-### Option 1: Docker (Recommended)
-
-#### Prerequisites
-- Docker and Docker Compose installed
-- Spotify Developer account
-
-#### 1. Get Spotify API Credentials
+### 1. Get Spotify API Credentials
 
 1. Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
-2. Log in with your Spotify account
-3. Click "Create App"
-4. Fill in the app details:
-   - **App name**: Spotify Remote Control (or any name you prefer)
-   - **App description**: Remote control for Spotify desktop client
-   - **Redirect URI**: Choose based on your setup (see HTTPS options below)
-5. Click "Save"
-6. Copy your **Client ID** and **Client Secret**
+2. Create a new app
+3. Copy your **Client ID** and **Client Secret**
 
-#### 2. Choose Your HTTPS Setup
+### 2. Get Tailscale Auth Key
 
-The app automatically detects and uses the best HTTPS method:
+1. Go to [Tailscale Admin Console](https://login.tailscale.com/admin/settings/keys)
+2. Generate a new auth key
+3. Copy the key
 
-**Option A: Let's Encrypt (Production)**
-- ✅ Free, trusted certificates
-- ✅ Works with any domain
-- ✅ Automatic renewal
-- ✅ Automatically detected when certificates are present
-- ❌ Requires domain name and port 80 access
-
-**Option B: Tailscale (Easy Setup)**
-- ✅ No domain required
-- ✅ Automatic HTTPS (handled by Tailscale)
-- ✅ Works across networks
-- ✅ Uses host's Tailscale installation
-- ✅ No certificate generation needed
-- ✅ Automatically detected when `.ts.net` domain is used
-- ❌ Requires Tailscale installed on host
-
-**Option C: Local Development**
-- ✅ Simple HTTP server for local development
-- ✅ No certificates needed
-- ✅ Works for testing and development
-- ❌ Not suitable for production (Spotify requires HTTPS)
-
-**Note:** The app automatically chooses the best method based on your configuration.
-
-#### 3. Configure Environment Variables
-
-1. Copy `env_example.txt` to `.env`:
-   ```bash
-   cp env_example.txt .env
-   ```
-
-2. Edit `.env` based on your chosen setup:
-
-   **For Let's Encrypt (Option A):**
-   ```
-   SPOTIFY_CLIENT_ID=your_actual_client_id_here
-   SPOTIFY_CLIENT_SECRET=your_actual_client_secret_here
-   SECRET_KEY=any_random_string_here
-   DOMAIN_NAME=your-domain.com
-   REDIRECT_URI=https://your-domain.com:5000/callback
-   ```
-
-   **For Tailscale (Option B):**
-   ```
-   SPOTIFY_CLIENT_ID=your_actual_client_id_here
-   SPOTIFY_CLIENT_SECRET=your_actual_client_secret_here
-   SECRET_KEY=any_random_string_here
-   DOMAIN_NAME=your-tailscale-endpoint.ts.net
-   REDIRECT_URI=https://your-tailscale-endpoint.ts.net:5000/callback
-   ```
-
-   **For Local Development (Option C):**
-   ```
-   SPOTIFY_CLIENT_ID=your_actual_client_id_here
-   SPOTIFY_CLIENT_SECRET=your_actual_client_secret_here
-   SECRET_KEY=any_random_string_here
-   REDIRECT_URI=http://localhost:5000/callback
-   ```
-
-
-
-#### 4. Set Up HTTPS (If Using Let's Encrypt)
-
-If you chose Option A (Let's Encrypt), run the setup script:
+### 3. Configure Environment
 
 ```bash
-python setup_letsencrypt.py
+cp env_example.txt .env
 ```
 
-This will:
-- Install certbot (if needed)
-- Generate certificates for your domain
-- Set up automatic renewal
-- Update your `.env` file
+Edit `.env`:
+```env
+SPOTIFY_CLIENT_ID=your_client_id_here
+SPOTIFY_CLIENT_SECRET=your_client_secret_here
+SECRET_KEY=any_random_string_here
+DOMAIN_NAME=your-hostname.ts.net
+TAILSCALE_AUTH_KEY=tskey-auth-xxxxxxxxx
+TAILSCALE_HOSTNAME=spotify-remote
+```
 
-**Requirements for Let's Encrypt:**
-- Domain name pointing to your server
-- Port 80 accessible from the internet
-- Root/sudo access on your server
+### 4. Run with Docker
 
-**Note:** The app automatically detects Let's Encrypt certificates when they're present in the `./certs/` directory.
-
-#### 5. Build and Run with Docker
-
-**Windows (PowerShell):**
-```powershell
+```bash
 docker-compose up -d
 ```
 
-**Linux/Mac:**
-```bash
-chmod +x docker-build.sh
-./docker-build.sh
+The app will:
+- Start Tailscale in the container
+- Connect to your Tailscale network
+- Run the web interface on HTTPS
+
+Access your app at: `https://your-hostname.ts.net:5000`
+
+## Local Development
+
+For local testing (no Tailscale needed):
+
+```env
+# Leave DOMAIN_NAME empty for local mode
+DOMAIN_NAME=
+REDIRECT_URI=http://localhost:5000/callback
 ```
-
-**Manual Docker commands:**
-```bash
-# Build the image
-docker build -t spotify-remote:latest .
-
-# Run with docker-compose
-docker-compose up -d
-```
-
-### Option 2: Local Development
-
-#### 1. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
-```
-
-#### 2. Configure Environment Variables
-
-Follow the same steps as Docker setup above.
-
-#### 3. Set Up HTTPS (If Using Let's Encrypt)
-
-If you chose Option A (Let's Encrypt), run the setup script:
-
-```bash
-python setup_letsencrypt.py
-```
-
-#### 4. Run the Application
-
-```bash
 python app.py
 ```
 
-The app will automatically detect your setup and start with the appropriate configuration:
-- **Let's Encrypt**: `https://your-domain.com:5000`
-- **Tailscale**: `https://your-tailscale-hostname.ts.net:5000`
-- **Local Development**: `http://localhost:5000`
+Access at: `http://localhost:5000`
 
 ## Usage
 
-### First Time Setup
-
-1. Open your browser and go to your app URL:
-   - **Let's Encrypt**: `https://your-domain.com:5000`
-   - **Tailscale**: `https://your-tailscale-hostname.ts.net:5000`
-   - **Local Development**: `http://localhost:5000`
+1. Open your app URL in a browser
 2. Click "Connect with Spotify"
-3. Authorize the app with your Spotify account
-4. You'll be redirected back to the control interface
+3. Authorize the app
+4. Control your desktop Spotify remotely
 
-### Controlling Spotify
-
-- **Play/Pause**: Click the large play/pause button
-- **Next Track**: Click the forward button
-- **Previous Track**: Click the backward button
-- **Volume**: Use the volume slider
-- **Seek**: Click anywhere on the progress bar to jump to that position
-
-### Accessing from Other Devices
-
-To control Spotify from your laptop or other devices:
-
-1. Find your computer's IP address:
-   - **Windows**: Run `ipconfig` in Command Prompt
-   - **Mac/Linux**: Run `ifconfig` or `ip addr` in Terminal
-
-2. On your laptop, open a browser and go to:
-   ```
-   http://YOUR_COMPUTER_IP:5000
-   ```
-   (Replace `YOUR_COMPUTER_IP` with your actual IP address)
-
-3. You'll see the same control interface and can control Spotify remotely
-
-## HTTPS Setup Options
-
-The app automatically detects and uses the best HTTPS method based on your configuration:
-
-### Option A: Let's Encrypt (Production)
-
-**Best for:** Production servers with domain names
-
-**Setup:**
-1. Have a domain name pointing to your server
-2. Ensure port 80 is accessible from the internet
-3. Run: `python setup_letsencrypt.py`
-4. Follow the prompts to generate certificates
-5. The app automatically detects Let's Encrypt certificates
-
-**Benefits:**
-- Free, trusted certificates
-- Automatic renewal
-- Industry standard
-- Works with any domain
-- Automatically detected by the app
-
-### Option B: Tailscale (Easy)
-
-**Best for:** Personal use, quick setup
-
-**Setup:**
-1. Install Tailscale on your host machine
-   - **Windows**: Download from [tailscale.com/download](https://tailscale.com/download)
-   - **Linux/Mac**: Use your package manager or download from the website
-2. Start Tailscale and connect to your network: `tailscale up`
-   - **Windows**: Run `.\setup_tailscale_windows.ps1` for automated setup
-3. Set `DOMAIN_NAME=your-tailscale-hostname.ts.net` in `.env`
-4. The app automatically detects Tailscale domains (`.ts.net`)
-5. Update your Spotify app's redirect URI to your Tailscale hostname
-6. Run the app - it will use your host's Tailscale installation
-
-**Benefits:**
-- No domain required
-- Automatic HTTPS (handled by Tailscale)
-- Works across networks
-- Simple setup
-- Automatically detected by the app
-
-### Option C: Local Development
-
-**Best for:** Testing and development
-
-**Setup:**
-1. No special configuration needed
-2. Run the app normally: `python app.py`
-3. Access via `http://localhost:5000`
-
-**Benefits:**
-- Simple setup
-- No certificates needed
-- Perfect for development and testing
-
-
-
-## Docker Management
-
-### Useful Commands
+## Docker Commands
 
 ```bash
 # View logs
 docker-compose logs -f
 
-# Stop the container
+# Stop
 docker-compose down
 
-# Restart the container
+# Restart
 docker-compose restart
 
-# Update and restart
-docker-compose pull && docker-compose up -d
-
-# View container status
-docker-compose ps
-
-# Access container shell (for debugging)
-docker-compose exec spotify-remote bash
-```
-
-### Production Deployment
-
-For production use, use the production compose file:
-
-```bash
+# Production mode
 docker-compose -f docker-compose.prod.yml up -d
 ```
 
-This includes additional security settings:
-- Read-only filesystem
-- Dropped capabilities
-- No new privileges
-- Health checks
-
 ## How It Works
 
-This app uses the Spotify Web API to:
-- Read the current playback state from your desktop Spotify client
-- Send control commands (play, pause, skip, etc.) to your desktop client
-- Display real-time track information and progress
-
-The app doesn't play any music itself - it only controls your existing Spotify desktop client. This means:
-- ✅ No duplicate playback
-- ✅ Works with your existing playlists and library
-- ✅ Maintains your current queue
-- ✅ Uses your desktop's audio output
+- Uses Spotify Web API to control your desktop client
+- Tailscale provides secure HTTPS access from anywhere
+- No music is played by the app - it only controls your existing Spotify
+- Container includes its own Tailscale installation
 
 ## Troubleshooting
 
-### "No active playback found"
+**"No active playback found"**
 - Make sure Spotify desktop client is running
-- Make sure music is playing or paused (not stopped)
-- Try refreshing the page
+- Make sure music is playing or paused
 
-### "Not authenticated" error
-- Your session may have expired
-- Go back to your app URL and re-authenticate
+**"Not authenticated"**
+- Re-authenticate with Spotify
 
-### Can't access from other devices
-- Make sure your firewall allows connections on port 5000
-- Check that both devices are on the same network
-- Try using your computer's local IP address instead of localhost
-
-### Volume control not working
-- Some Spotify clients may not support remote volume control
-- Try controlling volume directly on your desktop Spotify client
-
-### Docker issues
-- Make sure Docker and Docker Compose are installed and running
-- Check that the `.env` file exists and contains all required variables
-- View logs with `docker-compose logs -f` for error details
-
-### HTTPS/SSL issues
-- **Let's Encrypt**: Make sure port 80 is open and domain points to your server
-- **Tailscale**: Check that Tailscale is running and connected (no certificates needed)
-- **Local Development**: Use HTTP for local development (no certificates needed)
-- Check certificate renewal: `./renew_cert.sh`
-
-### Windows-specific issues
-- **Tailscale not found**: Make sure Tailscale is installed and running as a Windows service
-- **Permission denied**: Run PowerShell as Administrator if needed
-- **Tailscale CLI**: Make sure `tailscale` command is available in your PATH
-- **Docker on Windows**: Use Docker Desktop with WSL2 for best compatibility
-
-### Certificate renewal issues
-- Check if certbot is installed: `certbot --version`
-- Manually renew: `certbot renew`
-- Check cron job: `crontab -l`
-- View renewal logs: `journalctl -u certbot.timer`
-
-## Security Notes
-
-- This app runs locally on your network
-- Spotify credentials are stored locally and not shared
-- The app only requests the minimum permissions needed for playback control
-- HTTPS is recommended for production use
-- For production use, consider adding authentication to the web interface
-
-## Development
-
-To modify or extend the app:
-
-- **Backend**: Edit `app.py` to add new API endpoints
-- **Frontend**: Edit templates in the `templates/` folder
-- **Styling**: Modify the CSS in `templates/base.html`
+**Tailscale connection issues**
+- Check your auth key is correct
+- Verify Tailscale hostname is available
 
 ## License
 
-This project is open source and available under the MIT License.
-
-## Contributing
-
-Feel free to submit issues and enhancement requests! 
+MIT License 
