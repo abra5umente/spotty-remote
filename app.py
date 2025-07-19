@@ -3,7 +3,6 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import os
 import subprocess
-import time
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -36,39 +35,19 @@ def setup_tailscale():
         print("❌ TAILSCALE_AUTH_KEY is required")
         exit(1)
     
-    print("🔗 Setting up Tailscale...")
+    print("🔗 Connecting to Tailscale...")
     
     # Get hostname
     hostname = get_hostname()
     print(f"📱 Using hostname: {hostname}")
     
-    # Start Tailscale daemon in background
-    print("🔄 Starting Tailscale daemon...")
+    # Simple Tailscale connection
     try:
-        # Kill any existing tailscaled process
-        subprocess.run(['pkill', '-f', 'tailscaled'], capture_output=True)
-        time.sleep(1)
-        
-        # Start tailscaled in background with more options
-        subprocess.Popen([
-            'tailscaled', 
-            '--tun=userspace-networking', 
-            '--socks5-server=localhost:1055',
-            '--state=/tmp/tailscaled.state',
-            '--socket=/tmp/tailscaled.sock'
-        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        
-        print("⏳ Waiting for daemon to start...")
-        time.sleep(8)  # Give more time for daemon to start
-        
-        # Try to connect directly without checking status first
-        print("🔗 Connecting to Tailscale network...")
         result = subprocess.run([
             'tailscale', 'up', 
             '--authkey', TAILSCALE_AUTH_KEY,
             '--hostname', hostname,
-            '--advertise-tags', 'tag:spotify-remote',
-            '--reset'
+            '--advertise-tags', 'tag:spotify-remote'
         ], capture_output=True, text=True, check=True)
         
         print("✅ Tailscale connected successfully")
@@ -77,10 +56,6 @@ def setup_tailscale():
     except subprocess.CalledProcessError as e:
         print(f"❌ Failed to connect to Tailscale: {e}")
         print(f"Error output: {e.stderr}")
-        print("💡 Check your auth key and Tailscale network access")
-        exit(1)
-    except Exception as e:
-        print(f"❌ Failed to start Tailscale daemon: {e}")
         exit(1)
     
 
