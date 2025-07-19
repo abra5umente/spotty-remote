@@ -12,6 +12,7 @@ services:
       - SECRET_KEY=${SECRET_KEY}
       - REDIRECT_URI=${REDIRECT_URI}
       - FLASK_ENV=production
+      - DOCKER_CONTAINER=true
     volumes:
       # Mount Spotify cache directory for persistent tokens
       - spotify_cache:/app/.cache

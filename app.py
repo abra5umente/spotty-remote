@@ -310,8 +310,12 @@ def seek():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    if IS_TAILSCALE:
-        # Get Tailscale hostname if Tailscale is running
+    # Check if we're in a Docker container
+    is_docker = os.path.exists('/.dockerenv') or os.environ.get('DOCKER_CONTAINER') == 'true'
+    
+    if IS_TAILSCALE and not is_docker:
+        # Only try Tailscale detection if not in Docker and domain is .ts.net
+        print("🔍 Detecting Tailscale hostname...")
         tailscale_hostname = get_tailscale_hostname()
         if tailscale_hostname:
             print(f"🔒 Starting HTTP server on port {PORT}")
@@ -330,14 +334,24 @@ if __name__ == '__main__':
             print("💡 Please start Tailscale manually or use a different setup.")
             exit(1)
     else:
-        # Generate self-signed certificate for non-Tailscale HTTPS
+        # Use self-signed certificate for HTTPS (Docker or non-Tailscale)
+        if is_docker:
+            print("🐳 Running in Docker container")
+            if DOMAIN_NAME and '.ts.net' in DOMAIN_NAME:
+                print(f"🔒 Using provided Tailscale domain: {DOMAIN_NAME}")
+                print(f"📱 Access your app at: https://{DOMAIN_NAME}:{PORT}")
+            else:
+                print(f"🔒 Starting HTTPS server on port {PORT}")
+                print(f"📱 Access your app at: https://localhost:{PORT}")
+        else:
+            print(f"🔒 Starting HTTPS server on port {PORT}")
+            print(f"📱 Access your app at: https://localhost:{PORT}")
+            if DOMAIN_NAME:
+                print(f"🌐 Or at: https://{DOMAIN_NAME}:{PORT}")
+        
+        # Generate self-signed certificate for HTTPS
         cert_file, key_file = generate_self_signed_cert()
         ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         ssl_context.load_cert_chain(cert_file, key_file)
-        
-        print(f"🔒 Starting HTTPS server on port {PORT}")
-        print(f"📱 Access your app at: https://localhost:{PORT}")
-        if DOMAIN_NAME:
-            print(f"🌐 Or at: https://{DOMAIN_NAME}:{PORT}")
         
         app.run(debug=True, host='0.0.0.0', port=PORT, ssl_context=ssl_context) 
