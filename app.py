@@ -9,10 +9,6 @@ import ipaddress
 import subprocess
 import threading
 import time
-from cryptography import x509
-from cryptography.x509.oid import NameOID
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
 from datetime import datetime, timedelta
 import tempfile
 
@@ -35,6 +31,11 @@ PORT = int(os.getenv('PORT', 5000))
 
 # Check if using Tailscale (has .ts.net domain)
 IS_TAILSCALE = '.ts.net' in DOMAIN_NAME if DOMAIN_NAME else False
+
+# Check if using Let's Encrypt (has cert files)
+LETSENCRYPT_CERT = os.path.join(CERT_PATH, 'fullchain.pem')
+LETSENCRYPT_KEY = os.path.join(CERT_PATH, 'privkey.pem')
+IS_LETSENCRYPT = os.path.exists(LETSENCRYPT_CERT) and os.path.exists(LETSENCRYPT_KEY)
 
 # Spotify OAuth scope - we need user-read-playback-state and user-modify-playback-state
 SCOPE = "user-read-playback-state user-modify-playback-state user-read-currently-playing"
@@ -82,68 +83,14 @@ def get_tailscale_hostname():
         print("💡 Download from: https://tailscale.com/download")
         return None
 
-def generate_self_signed_cert():
-    """Generate a self-signed certificate for development"""
-    # Create certs directory if it doesn't exist
-    os.makedirs(CERT_PATH, exist_ok=True)
-    
-    cert_file = os.path.join(CERT_PATH, 'cert.pem')
-    key_file = os.path.join(CERT_PATH, 'key.pem')
-    
-    # Check if certificates already exist
-    if os.path.exists(cert_file) and os.path.exists(key_file):
-        return cert_file, key_file
-    
-    print("🔐 Generating self-signed certificate for HTTPS...")
-    
-    # Generate private key
-    private_key = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=2048,
-    )
-    
-    # Create certificate
-    subject = issuer = x509.Name([
-        x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
-        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "Development"),
-        x509.NameAttribute(NameOID.LOCALITY_NAME, "Development"),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Spotify Remote"),
-        x509.NameAttribute(NameOID.COMMON_NAME, DOMAIN_NAME or "localhost"),
-    ])
-    
-    cert = x509.CertificateBuilder().subject_name(
-        subject
-    ).issuer_name(
-        issuer
-    ).public_key(
-        private_key.public_key()
-    ).serial_number(
-        x509.random_serial_number()
-    ).not_valid_before(
-        datetime.utcnow()
-    ).not_valid_after(
-        datetime.utcnow() + timedelta(days=365)
-    ).add_extension(
-        x509.SubjectAlternativeName([
-            x509.DNSName(DOMAIN_NAME or "localhost"),
-            x509.IPAddress(ipaddress.IPv4Address("127.0.0.1")),
-        ]),
-        critical=False,
-    ).sign(private_key, hashes.SHA256())
-    
-    # Write certificate and private key to files
-    with open(cert_file, "wb") as f:
-        f.write(cert.public_bytes(serialization.Encoding.PEM))
-    
-    with open(key_file, "wb") as f:
-        f.write(private_key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption()
-        ))
-    
-    print(f"✅ Certificate generated: {cert_file}")
-    return cert_file, key_file
+def check_letsencrypt_certs():
+    """Check if Let's Encrypt certificates are available"""
+    if os.path.exists(LETSENCRYPT_CERT) and os.path.exists(LETSENCRYPT_KEY):
+        print(f"✅ Found Let's Encrypt certificates")
+        return True
+    else:
+        print(f"⚠️ Let's Encrypt certificates not found at {CERT_PATH}")
+        return False
 
 @app.route('/')
 def index():
@@ -334,45 +281,52 @@ if __name__ == '__main__':
     # Check if we're in a Docker container
     is_docker = os.path.exists('/.dockerenv') or os.environ.get('DOCKER_CONTAINER') == 'true'
     
-    if IS_TAILSCALE and not is_docker:
-        # Only try Tailscale detection if not in Docker and domain is .ts.net
-        print("🔍 Detecting Tailscale hostname...")
-        tailscale_hostname = get_tailscale_hostname()
-        if tailscale_hostname:
-            print(f"🔒 Starting HTTP server on port {PORT}")
-            print(f"📱 Access your app at: https://{tailscale_hostname}:{PORT}")
-            
-            # Update the redirect URI for Spotify
-            spotify_redirect_uri = f"https://{tailscale_hostname}:{PORT}/callback"
-            print(f"🔗 Spotify redirect URI: {spotify_redirect_uri}")
-            
-            # Update the OAuth object with the new redirect URI
-            app.config['SPOTIFY_REDIRECT_URI'] = spotify_redirect_uri
-            
-            app.run(debug=True, host='0.0.0.0', port=PORT)
-        else:
-            print("❌ Tailscale not running or hostname not found.")
-            print("💡 Please start Tailscale manually or use a different setup.")
-            exit(1)
-    else:
-        # Use self-signed certificate for HTTPS (Docker or non-Tailscale)
+    # Determine the correct setup based on configuration
+    if IS_TAILSCALE:
+        # Tailscale mode: HTTP server (Tailscale handles HTTPS)
         if is_docker:
-            print("🐳 Running in Docker container")
+            # In Docker, use the provided domain
             if DOMAIN_NAME and '.ts.net' in DOMAIN_NAME:
-                print(f"🔒 Using provided Tailscale domain: {DOMAIN_NAME}")
+                print(f"🔒 Tailscale mode (Docker): HTTP server")
                 print(f"📱 Access your app at: https://{DOMAIN_NAME}:{PORT}")
+                print(f"🔗 Spotify redirect URI: https://{DOMAIN_NAME}:{PORT}/callback")
             else:
-                print(f"🔒 Starting HTTPS server on port {PORT}")
-                print(f"📱 Access your app at: https://localhost:{PORT}")
+                print("❌ Tailscale domain not provided in Docker")
+                exit(1)
         else:
-            print(f"🔒 Starting HTTPS server on port {PORT}")
-            print(f"📱 Access your app at: https://localhost:{PORT}")
-            if DOMAIN_NAME:
-                print(f"🌐 Or at: https://{DOMAIN_NAME}:{PORT}")
+            # Local Tailscale: detect hostname
+            print("🔍 Detecting Tailscale hostname...")
+            tailscale_hostname = get_tailscale_hostname()
+            if tailscale_hostname:
+                print(f"🔒 Tailscale mode (Local): HTTP server")
+                print(f"📱 Access your app at: https://{tailscale_hostname}:{PORT}")
+                print(f"🔗 Spotify redirect URI: https://{tailscale_hostname}:{PORT}/callback")
+            else:
+                print("❌ Tailscale not running or hostname not found.")
+                print("💡 Please start Tailscale manually or use a different setup.")
+                exit(1)
         
-        # Generate self-signed certificate for HTTPS
-        cert_file, key_file = generate_self_signed_cert()
+        # Start HTTP server for Tailscale
+        app.run(debug=True, host='0.0.0.0', port=PORT)
+        
+    elif IS_LETSENCRYPT:
+        # Let's Encrypt mode: HTTPS with Let's Encrypt certs
+        print("🔒 Let's Encrypt mode: HTTPS server")
+        print(f"📱 Access your app at: https://{DOMAIN_NAME}:{PORT}")
+        print(f"🔗 Spotify redirect URI: https://{DOMAIN_NAME}:{PORT}/callback")
+        
+        # Use Let's Encrypt certificates
         ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        ssl_context.load_cert_chain(cert_file, key_file)
+        ssl_context.load_cert_chain(LETSENCRYPT_CERT, LETSENCRYPT_KEY)
         
-        app.run(debug=True, host='0.0.0.0', port=PORT, ssl_context=ssl_context) 
+        app.run(debug=True, host='0.0.0.0', port=PORT, ssl_context=ssl_context)
+        
+    else:
+        # Local development mode: HTTP server
+        print("🔒 Local development mode: HTTP server")
+        print(f"📱 Access your app at: http://localhost:{PORT}")
+        if DOMAIN_NAME:
+            print(f"🌐 Or at: http://{DOMAIN_NAME}:{PORT}")
+        
+        # Start HTTP server for local development
+        app.run(debug=True, host='0.0.0.0', port=PORT) 
