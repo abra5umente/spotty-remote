@@ -46,7 +46,7 @@ docker-compose up -d
 echo "✅ Container started!"
 echo ""
 echo "📱 Access your app at:"
-echo "   Local: http://localhost:5000"
+echo "   Local: https://localhost:5000"
 echo "   Tailscale: https://abra5dt-win.skink-broadnose.ts.net:5000"
 echo ""
 echo "🔧 Useful commands:"

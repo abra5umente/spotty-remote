@@ -65,7 +65,7 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "✅ Container started!" -ForegroundColor Green
 Write-Host ""
 Write-Host "📱 Access your app at:" -ForegroundColor Cyan
-Write-Host "   Local: http://localhost:5000" -ForegroundColor White
+Write-Host "   Local: https://localhost:5000" -ForegroundColor White
 Write-Host "   Tailscale: https://abra5dt-win.skink-broadnose.ts.net:5000" -ForegroundColor White
 Write-Host ""
 Write-Host "🔧 Useful commands:" -ForegroundColor Cyan

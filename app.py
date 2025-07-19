@@ -21,7 +21,7 @@ app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-here')
 # Spotify API credentials
 SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
 SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
-REDIRECT_URI = os.getenv('REDIRECT_URI', 'http://localhost:5000/callback')
+REDIRECT_URI = os.getenv('REDIRECT_URI', 'https://localhost:5000/callback')
 
 # HTTPS configuration (required by Spotify)
 USE_HTTPS = os.getenv('USE_HTTPS', 'true').lower() == 'true'

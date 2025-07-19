@@ -70,6 +70,4 @@ Dockerfile
 docker-compose*.yml
 
 # Development scripts
-setup_*.py
-get_ngrok_url.py
-start.py 
+setup_*.py 
