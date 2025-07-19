@@ -35,8 +35,7 @@ A Python web application that allows you to control your desktop Spotify client 
 4. Fill in the app details:
    - **App name**: Spotify Remote Control (or any name you prefer)
    - **App description**: Remote control for Spotify desktop client
-   - **Website**: `http://localhost:5000` (for local development)
-   - **Redirect URI**: `https://abra5dt-win.skink-broadnose.ts.net:5000/callback` (for Tailscale)
+   - **Redirect URI**: `https://your-tailscale.endpoint.ts.net:5000/callback`
 5. Click "Save"
 6. Copy your **Client ID** and **Client Secret**
 
@@ -52,7 +51,7 @@ A Python web application that allows you to control your desktop Spotify client 
    SPOTIFY_CLIENT_ID=your_actual_client_id_here
    SPOTIFY_CLIENT_SECRET=your_actual_client_secret_here
    SECRET_KEY=any_random_string_here
-   REDIRECT_URI=https://abra5dt-win.skink-broadnose.ts.net:5000/callback
+   REDIRECT_URI=https://your-tailscale.endpoint.ts.net:5000/callback
    ```
 
 #### 3. Build and Run with Docker
